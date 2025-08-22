@@ -1,5 +1,6 @@
+
 import discord
-from discord import Interaction
+from discord import Interaction, ui
 import json
 import pytz
 
@@ -46,9 +47,9 @@ def get_timezone_display(timezone: str) -> str:
     except:
         return timezone
 
-class ProfileEditView(discord.ui.View):
+class ProfileEditView(ui.LayoutView):
     def __init__(self, db, user_id):
-        super().__init__(timeout=300)
+        super().__init__()
         self.db = db
         self.user_id = user_id
 
@@ -64,72 +65,155 @@ class ProfileEditView(discord.ui.View):
         user = interaction.guild.get_member(self.user_id)
         user_name = user.display_name if user else "Unknown User"
         
-        content = f"""## ⚙️ Profile Editor for {user_name}
-
-🛠️ **Customize your gaming profile**
-
-**📝 Gaming Bio:** `{gaming_bio if gaming_bio else 'Not set'}`
-**🎮 Main Game:** `{get_game_name(main_game)}`
-**🌍 Timezone:** `{timezone}`
-**🏆 Team Affiliation:** `{team_affiliation if team_affiliation else 'Not set'}`
-**🔗 Social Links:** `{len(social_links)} links` if social_links else '`No links set`'
-**🎨 Embed Color:** `{embed_color}`
-
-💡 Click the buttons below to customize your profile"""
+        # Clear existing items and rebuild
+        self.clear_items()
         
-        return content
+        container = ui.Container(accent_color=0x00d4ff)
+        header = ui.TextDisplay(f'# ⚙️ Profile Editor for {user_name}\n-# Customize your gaming profile')
+        container.add_item(header)
+        container.add_item(ui.Separator(spacing=discord.SeparatorSpacing.large))
 
-    @discord.ui.button(label="Gaming Bio", style=discord.ButtonStyle.primary, emoji="📝", row=0)
-    async def edit_bio(self, interaction: Interaction, button: discord.ui.Button):
+        # Gaming Bio Section
+        bio_text = gaming_bio if gaming_bio else 'Not set'
+        container.add_item(
+            ui.Section(
+                ui.TextDisplay(f'## 📝 Gaming Bio\n-# Current: {bio_text}'),
+                accessory=EditBioButton(self.db, self.user_id, self)
+            )
+        )
+
+        # Main Game Section
+        game_text = get_game_name(main_game)
+        container.add_item(
+            ui.Section(
+                ui.TextDisplay(f'## 🎮 Main Game\n-# Current: {game_text}'),
+                accessory=EditGameButton(self.db, self.user_id, self)
+            )
+        )
+
+        # Social Links Section
+        links_text = f'{len(social_links)} links' if social_links else 'No links set'
+        container.add_item(
+            ui.Section(
+                ui.TextDisplay(f'## 🔗 Social Links\n-# Current: {links_text}'),
+                accessory=EditSocialButton(self.db, self.user_id, self)
+            )
+        )
+
+        container.add_item(ui.Separator(spacing=discord.SeparatorSpacing.small))
+
+        # Timezone Section
+        container.add_item(
+            ui.Section(
+                ui.TextDisplay(f'## 🌍 Timezone\n-# Current: {timezone}'),
+                accessory=EditTimezoneButton(self.db, self.user_id, self)
+            )
+        )
+
+        # Team Section
+        team_text = team_affiliation if team_affiliation else 'Not set'
+        container.add_item(
+            ui.Section(
+                ui.TextDisplay(f'## 🏆 Team Affiliation\n-# Current: {team_text}'),
+                accessory=EditTeamButton(self.db, self.user_id, self)
+            )
+        )
+
+        # Color Section
+        container.add_item(
+            ui.Section(
+                ui.TextDisplay(f'## 🎨 Embed Color\n-# Current: {embed_color}'),
+                accessory=EditColorButton(self.db, self.user_id, self)
+            )
+        )
+
+        self.add_item(container)
+        return None  # No content string needed for container layout
+
+class EditBioButton(ui.Button['ProfileEditView']):
+    def __init__(self, db, user_id, parent_view):
+        super().__init__(label="Edit Bio", style=discord.ButtonStyle.primary, emoji="📝")
+        self.db = db
+        self.user_id = user_id
+        self.parent_view = parent_view
+
+    async def callback(self, interaction: Interaction):
         profile = await self.db.get_user_profile(str(interaction.guild_id), str(self.user_id))
         existing_bio = profile[0] if profile else ""
         
-        modal = BioModal(self.db, self.user_id, self, existing_bio)
+        modal = BioModal(self.db, self.user_id, self.parent_view, existing_bio)
         modal.setup_existing_value(existing_bio)
         await interaction.response.send_modal(modal)
 
-    @discord.ui.button(label="Main Game", style=discord.ButtonStyle.primary, emoji="🎮", row=0)
-    async def edit_game(self, interaction: Interaction, button: discord.ui.Button):
-        view = GameSelectView(self.db, self.user_id, self)
-        content = "## 🎮 Select Main Game\n\nChoose your primary game from the dropdown below:"
-        await interaction.response.edit_message(content=content, view=view)
+class EditGameButton(ui.Button['ProfileEditView']):
+    def __init__(self, db, user_id, parent_view):
+        super().__init__(label="Change Game", style=discord.ButtonStyle.primary, emoji="🎮")
+        self.db = db
+        self.user_id = user_id
+        self.parent_view = parent_view
 
-    @discord.ui.button(label="Social Links", style=discord.ButtonStyle.primary, emoji="🔗", row=0)
-    async def edit_social(self, interaction: Interaction, button: discord.ui.Button):
+    async def callback(self, interaction: Interaction):
+        view = GameSelectView(self.db, self.user_id, self.parent_view)
+        await interaction.response.edit_message(view=view)
+
+class EditSocialButton(ui.Button['ProfileEditView']):
+    def __init__(self, db, user_id, parent_view):
+        super().__init__(label="Edit Links", style=discord.ButtonStyle.primary, emoji="🔗")
+        self.db = db
+        self.user_id = user_id
+        self.parent_view = parent_view
+
+    async def callback(self, interaction: Interaction):
         profile = await self.db.get_user_profile(str(interaction.guild_id), str(self.user_id))
         existing_links = {}
         if profile and profile[2]:
             existing_links = json.loads(profile[2])
         
-        modal = SocialLinksModal(self.db, self.user_id, self, existing_links)
+        modal = SocialLinksModal(self.db, self.user_id, self.parent_view, existing_links)
         modal.setup_existing_values(existing_links)
         await interaction.response.send_modal(modal)
 
-    @discord.ui.button(label="Timezone", style=discord.ButtonStyle.secondary, emoji="🌍", row=1)
-    async def edit_timezone(self, interaction: Interaction, button: discord.ui.Button):
-        view = TimezoneSelectView(self.db, self.user_id, self)
-        content = "## 🌍 Select Timezone\n\nChoose your timezone from the dropdown below:"
-        await interaction.response.edit_message(content=content, view=view)
+class EditTimezoneButton(ui.Button['ProfileEditView']):
+    def __init__(self, db, user_id, parent_view):
+        super().__init__(label="Change Timezone", style=discord.ButtonStyle.secondary, emoji="🌍")
+        self.db = db
+        self.user_id = user_id
+        self.parent_view = parent_view
 
-    @discord.ui.button(label="Team", style=discord.ButtonStyle.secondary, emoji="🏆", row=1)
-    async def edit_team(self, interaction: Interaction, button: discord.ui.Button):
-        modal = TeamModal(self.db, self.user_id, self)
+    async def callback(self, interaction: Interaction):
+        view = TimezoneSelectView(self.db, self.user_id, self.parent_view)
+        await interaction.response.edit_message(view=view)
+
+class EditTeamButton(ui.Button['ProfileEditView']):
+    def __init__(self, db, user_id, parent_view):
+        super().__init__(label="Edit Team", style=discord.ButtonStyle.secondary, emoji="🏆")
+        self.db = db
+        self.user_id = user_id
+        self.parent_view = parent_view
+
+    async def callback(self, interaction: Interaction):
+        modal = TeamModal(self.db, self.user_id, self.parent_view)
         await interaction.response.send_modal(modal)
 
-    @discord.ui.button(label="Color", style=discord.ButtonStyle.secondary, emoji="🎨", row=1)
-    async def edit_color(self, interaction: Interaction, button: discord.ui.Button):
-        view = ColorSelectView(self.db, self.user_id, self)
-        content = "## 🎨 Select Embed Color\n\nChoose your profile embed color from the dropdown below:"
-        await interaction.response.edit_message(content=content, view=view)
+class EditColorButton(ui.Button['ProfileEditView']):
+    def __init__(self, db, user_id, parent_view):
+        super().__init__(label="Change Color", style=discord.ButtonStyle.secondary, emoji="🎨")
+        self.db = db
+        self.user_id = user_id
+        self.parent_view = parent_view
 
-class BioModal(discord.ui.Modal):
+    async def callback(self, interaction: Interaction):
+        view = ColorSelectView(self.db, self.user_id, self.parent_view)
+        await interaction.response.edit_message(view=view)
+
+class BioModal(ui.Modal):
     def __init__(self, db, user_id, parent_view, existing_bio=None):
         super().__init__(title="📝 Edit Gaming Bio")
         self.db = db
         self.user_id = user_id
         self.parent_view = parent_view
 
-    bio = discord.ui.TextInput(
+    bio = ui.TextInput(
         label="Gaming Bio",
         placeholder="Describe your playstyle, achievements, or personality...",
         max_length=200,
@@ -146,10 +230,10 @@ class BioModal(discord.ui.Modal):
             str(self.user_id), 
             gaming_bio=self.bio.value
         )
-        content = await self.parent_view.refresh_content(interaction)
-        await interaction.response.edit_message(content=content, view=self.parent_view)
+        await self.parent_view.refresh_content(interaction)
+        await interaction.response.edit_message(view=self.parent_view)
 
-class SocialLinksModal(discord.ui.Modal):
+class SocialLinksModal(ui.Modal):
     def __init__(self, db, user_id, parent_view, existing_links=None):
         super().__init__(title="🔗 Edit Social Links")
         self.db = db
@@ -159,35 +243,35 @@ class SocialLinksModal(discord.ui.Modal):
         if existing_links is None:
             existing_links = {}
 
-    twitch = discord.ui.TextInput(
+    twitch = ui.TextInput(
         label="Twitch URL",
         placeholder="https://www.twitch.tv/yourusername",
         max_length=200,
         required=False
     )
     
-    youtube = discord.ui.TextInput(
+    youtube = ui.TextInput(
         label="YouTube URL",
         placeholder="https://www.youtube.com/@yourchannel",
         max_length=200,
         required=False
     )
     
-    twitter = discord.ui.TextInput(
+    twitter = ui.TextInput(
         label="Twitter/X URL",
         placeholder="https://twitter.com/yourusername",
         max_length=200,
         required=False
     )
     
-    instagram = discord.ui.TextInput(
+    instagram = ui.TextInput(
         label="Instagram URL",
         placeholder="https://www.instagram.com/yourusername",
         max_length=200,
         required=False
     )
     
-    tiktok = discord.ui.TextInput(
+    tiktok = ui.TextInput(
         label="TikTok URL",
         placeholder="https://www.tiktok.com/@yourusername",
         max_length=200,
@@ -237,17 +321,17 @@ class SocialLinksModal(discord.ui.Modal):
             str(self.user_id),
             social_links=json.dumps(existing_links)
         )
-        content = await self.parent_view.refresh_content(interaction)
-        await interaction.response.edit_message(content=content, view=self.parent_view)
+        await self.parent_view.refresh_content(interaction)
+        await interaction.response.edit_message(view=self.parent_view)
 
-class TeamModal(discord.ui.Modal):
+class TeamModal(ui.Modal):
     def __init__(self, db, user_id, parent_view):
         super().__init__(title="🏆 Edit Team Affiliation")
         self.db = db
         self.user_id = user_id
         self.parent_view = parent_view
 
-    team = discord.ui.TextInput(
+    team = ui.TextInput(
         label="Team Name",
         placeholder="Your current team or organization...",
         max_length=100,
@@ -260,71 +344,146 @@ class TeamModal(discord.ui.Modal):
             str(self.user_id),
             team_affiliation=self.team.value
         )
-        content = await self.parent_view.refresh_content(interaction)
-        await interaction.response.edit_message(content=content, view=self.parent_view)
+        await self.parent_view.refresh_content(interaction)
+        await interaction.response.edit_message(view=self.parent_view)
 
-class GameSelectView(discord.ui.View):
+class GameSelectView(ui.LayoutView):
     def __init__(self, db, user_id, parent_view):
-        super().__init__(timeout=60)
+        super().__init__()
         self.db = db
         self.user_id = user_id
         self.parent_view = parent_view
 
-    @discord.ui.select(
+        container = ui.Container(accent_color=0x00d4ff)
+        header = ui.TextDisplay('# 🎮 Select Main Game\n-# Choose your primary game from the dropdown below')
+        container.add_item(header)
+        container.add_item(ui.Separator(spacing=discord.SeparatorSpacing.large))
+
+        container.add_item(ui.TextDisplay('## 🎯 Available Games\n-# Select from Rainbow Six Siege or Battlefield 6'))
+        container.add_item(GameSelectDropdown(self.db, self.user_id, self.parent_view))
+
+        container.add_item(ui.Separator(spacing=discord.SeparatorSpacing.small))
+        nav_row = ui.ActionRow()
+        nav_row.add_item(BackToProfileButton(self.parent_view))
+        container.add_item(nav_row)
+
+        self.add_item(container)
+
+class GameSelectDropdown(ui.ActionRow['GameSelectView']):
+    def __init__(self, db, user_id, parent_view):
+        super().__init__()
+        self.db = db
+        self.user_id = user_id
+        self.parent_view = parent_view
+
+    @ui.select(
         placeholder="Select your main game...",
         options=GAME_OPTIONS,
         min_values=1,
         max_values=1
     )
-    async def select_game(self, interaction: Interaction, select: discord.ui.Select):
+    async def select_game(self, interaction: Interaction, select: ui.Select):
         await self.db.update_user_profile(
             str(interaction.guild_id),
             str(self.user_id),
             main_game=select.values[0]
         )
-        content = await self.parent_view.refresh_content(interaction)
-        await interaction.response.edit_message(content=content, view=self.parent_view)
+        await self.parent_view.refresh_content(interaction)
+        await interaction.response.edit_message(view=self.parent_view)
 
-class TimezoneSelectView(discord.ui.View):
+class TimezoneSelectView(ui.LayoutView):
     def __init__(self, db, user_id, parent_view):
-        super().__init__(timeout=60)
+        super().__init__()
         self.db = db
         self.user_id = user_id
         self.parent_view = parent_view
 
-    @discord.ui.select(
+        container = ui.Container(accent_color=0x00d4ff)
+        header = ui.TextDisplay('# 🌍 Select Timezone\n-# Choose your timezone from the dropdown below')
+        container.add_item(header)
+        container.add_item(ui.Separator(spacing=discord.SeparatorSpacing.large))
+
+        container.add_item(ui.TextDisplay('## 🕒 Available Timezones\n-# Select your local timezone for accurate time display'))
+        container.add_item(TimezoneSelectDropdown(self.db, self.user_id, self.parent_view))
+
+        container.add_item(ui.Separator(spacing=discord.SeparatorSpacing.small))
+        nav_row = ui.ActionRow()
+        nav_row.add_item(BackToProfileButton(self.parent_view))
+        container.add_item(nav_row)
+
+        self.add_item(container)
+
+class TimezoneSelectDropdown(ui.ActionRow['TimezoneSelectView']):
+    def __init__(self, db, user_id, parent_view):
+        super().__init__()
+        self.db = db
+        self.user_id = user_id
+        self.parent_view = parent_view
+
+    @ui.select(
         placeholder="Select your timezone...",
         options=TIMEZONE_OPTIONS,
         min_values=1,
         max_values=1
     )
-    async def select_timezone(self, interaction: Interaction, select: discord.ui.Select):
+    async def select_timezone(self, interaction: Interaction, select: ui.Select):
         await self.db.update_user_profile(
             str(interaction.guild_id),
             str(self.user_id),
             timezone=select.values[0]
         )
-        content = await self.parent_view.refresh_content(interaction)
-        await interaction.response.edit_message(content=content, view=self.parent_view)
+        await self.parent_view.refresh_content(interaction)
+        await interaction.response.edit_message(view=self.parent_view)
 
-class ColorSelectView(discord.ui.View):
+class ColorSelectView(ui.LayoutView):
     def __init__(self, db, user_id, parent_view):
-        super().__init__(timeout=60)
+        super().__init__()
         self.db = db
         self.user_id = user_id
         self.parent_view = parent_view
 
-    @discord.ui.select(
+        container = ui.Container(accent_color=0x00d4ff)
+        header = ui.TextDisplay('# 🎨 Select Embed Color\n-# Choose your profile embed color from the dropdown below')
+        container.add_item(header)
+        container.add_item(ui.Separator(spacing=discord.SeparatorSpacing.large))
+
+        container.add_item(ui.TextDisplay('## 🌈 Available Colors\n-# Select a color for your profile embeds'))
+        container.add_item(ColorSelectDropdown(self.db, self.user_id, self.parent_view))
+
+        container.add_item(ui.Separator(spacing=discord.SeparatorSpacing.small))
+        nav_row = ui.ActionRow()
+        nav_row.add_item(BackToProfileButton(self.parent_view))
+        container.add_item(nav_row)
+
+        self.add_item(container)
+
+class ColorSelectDropdown(ui.ActionRow['ColorSelectView']):
+    def __init__(self, db, user_id, parent_view):
+        super().__init__()
+        self.db = db
+        self.user_id = user_id
+        self.parent_view = parent_view
+
+    @ui.select(
         placeholder="Select your embed color...",
         options=COLOR_OPTIONS,
         min_values=1,
         max_values=1
     )
-    async def select_color(self, interaction: Interaction, select: discord.ui.Select):
+    async def select_color(self, interaction: Interaction, select: ui.Select):
         await self.db.update_user_profile(
             str(interaction.guild_id),
             str(self.user_id),
             embed_color=select.values[0]
         )
-        content = await self.parent_view.refresh_content(interaction)
-        await interaction.response.edit_message(content=content, view=self.parent_view)
+        await self.parent_view.refresh_content(interaction)
+        await interaction.response.edit_message(view=self.parent_view)
+
+class BackToProfileButton(ui.Button):
+    def __init__(self, parent_view):
+        super().__init__(label="← Back to Profile", style=discord.ButtonStyle.secondary, emoji="🔙")
+        self.parent_view = parent_view
+
+    async def callback(self, interaction: Interaction):
+        await self.parent_view.refresh_content(interaction)
+        await interaction.response.edit_message(view=self.parent_view)

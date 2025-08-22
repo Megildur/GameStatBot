@@ -136,7 +136,7 @@ class LeaderboardEmbedGenerator:
 				if guild:
 					user = guild.get_member(user_id_int)
 					print(f"User {user_id} not found in cache, trying guild {guild_id}")
-			user_display = user.mention
+			user_display = user.display_name
 
 			embed.add_field(
 				name=f"{medal} {user_display}",

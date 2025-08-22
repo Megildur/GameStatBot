@@ -286,18 +286,7 @@ class Commands(commands.Cog):
 	)
 	async def set_stats(self, i: Interaction) -> None:
 		view = SelectUserView(self.db)
-		embed = discord.Embed(
-			title="🛠️ Admin Stats Editor",
-			description="🎯 **Welcome to the Stats Management System**\n\n📋 **Step 1 of 3:** Select a user from the dropdown below to modify their gaming statistics",
-			color=0xff6600
-		)
-		embed.add_field(
-			name="⚡ Quick Start",
-			value="Click on the user selector below to begin editing stats",
-			inline=False
-		)
-		embed.set_footer(text="🔐 Admin Only Tool • Secure Stats Management")
-		await i.response.send_message(embed=embed, view=view, ephemeral=True)
+		await i.response.send_message(view=view, ephemeral=True)
 
 	@admin.command(
 		name='reset_stats', 

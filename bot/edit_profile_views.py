@@ -100,6 +100,8 @@ class ProfileEditView(ui.LayoutView):
             )
         )
 
+        container.add_item(ui.Separator(spacing=discord.SeparatorSpacing.small))
+
         # Timezone Section
         container.add_item(
             ui.Section(

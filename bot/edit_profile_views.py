@@ -52,7 +52,7 @@ class ProfileEditView(discord.ui.View):
         self.db = db
         self.user_id = user_id
 
-    async def refresh_embed(self, interaction: Interaction):
+    async def refresh_content(self, interaction: Interaction):
         profile = await self.db.get_user_profile(str(interaction.guild_id), str(self.user_id))
         if not profile:
             await self.db.create_user_profile(str(interaction.guild_id), str(self.user_id))
@@ -61,49 +61,23 @@ class ProfileEditView(discord.ui.View):
         gaming_bio, main_game, social_links_str, embed_color, timezone, team_affiliation = profile
         social_links = json.loads(social_links_str) if social_links_str else {}
         
-        embed = discord.Embed(
-            title="⚙️ Profile Editor",
-            description="🛠️ **Customize your gaming profile**\n\nUse the buttons below to edit different aspects of your profile.",
-            color=int(embed_color, 16)
-        )
-        
         user = interaction.guild.get_member(self.user_id)
-        if user:
-            embed.set_thumbnail(url=user.display_avatar.url)
+        user_name = user.display_name if user else "Unknown User"
         
-        embed.add_field(
-            name="📝 Gaming Bio",
-            value=f"`{gaming_bio}`" if gaming_bio else "`Not set`",
-            inline=False
-        )
-        embed.add_field(
-            name="🎮 Main Game",
-            value=f"`{get_game_name(main_game)}`",
-            inline=True
-        )
-        embed.add_field(
-            name="🌍 Timezone",
-            value=f"`{timezone}`",
-            inline=True
-        )
-        embed.add_field(
-            name="🏆 Team Affiliation",
-            value=f"`{team_affiliation}`" if team_affiliation else "`Not set`",
-            inline=True
-        )
-        embed.add_field(
-            name="🔗 Social Links",
-            value=f"`{len(social_links)} links`" if social_links else "`No links set`",
-            inline=True
-        )
-        embed.add_field(
-            name="🎨 Embed Color",
-            value=f"`{embed_color}`",
-            inline=True
-        )
+        content = f"""## ⚙️ Profile Editor for {user_name}
+
+🛠️ **Customize your gaming profile**
+
+**📝 Gaming Bio:** `{gaming_bio if gaming_bio else 'Not set'}`
+**🎮 Main Game:** `{get_game_name(main_game)}`
+**🌍 Timezone:** `{timezone}`
+**🏆 Team Affiliation:** `{team_affiliation if team_affiliation else 'Not set'}`
+**🔗 Social Links:** `{len(social_links)} links` if social_links else '`No links set`'
+**🎨 Embed Color:** `{embed_color}`
+
+💡 Click the buttons below to customize your profile"""
         
-        embed.set_footer(text="💡 Click the buttons below to customize your profile")
-        return embed
+        return content
 
     @discord.ui.button(label="Gaming Bio", style=discord.ButtonStyle.primary, emoji="📝", row=0)
     async def edit_bio(self, interaction: Interaction, button: discord.ui.Button):
@@ -117,12 +91,8 @@ class ProfileEditView(discord.ui.View):
     @discord.ui.button(label="Main Game", style=discord.ButtonStyle.primary, emoji="🎮", row=0)
     async def edit_game(self, interaction: Interaction, button: discord.ui.Button):
         view = GameSelectView(self.db, self.user_id, self)
-        embed = discord.Embed(
-            title="🎮 Select Main Game",
-            description="Choose your primary game from the dropdown below:",
-            color=0x00d4ff
-        )
-        await interaction.response.edit_message(embed=embed, view=view)
+        content = "## 🎮 Select Main Game\n\nChoose your primary game from the dropdown below:"
+        await interaction.response.edit_message(content=content, view=view)
 
     @discord.ui.button(label="Social Links", style=discord.ButtonStyle.primary, emoji="🔗", row=0)
     async def edit_social(self, interaction: Interaction, button: discord.ui.Button):
@@ -138,12 +108,8 @@ class ProfileEditView(discord.ui.View):
     @discord.ui.button(label="Timezone", style=discord.ButtonStyle.secondary, emoji="🌍", row=1)
     async def edit_timezone(self, interaction: Interaction, button: discord.ui.Button):
         view = TimezoneSelectView(self.db, self.user_id, self)
-        embed = discord.Embed(
-            title="🌍 Select Timezone",
-            description="Choose your timezone from the dropdown below:",
-            color=0x00d4ff
-        )
-        await interaction.response.edit_message(embed=embed, view=view)
+        content = "## 🌍 Select Timezone\n\nChoose your timezone from the dropdown below:"
+        await interaction.response.edit_message(content=content, view=view)
 
     @discord.ui.button(label="Team", style=discord.ButtonStyle.secondary, emoji="🏆", row=1)
     async def edit_team(self, interaction: Interaction, button: discord.ui.Button):
@@ -153,12 +119,8 @@ class ProfileEditView(discord.ui.View):
     @discord.ui.button(label="Color", style=discord.ButtonStyle.secondary, emoji="🎨", row=1)
     async def edit_color(self, interaction: Interaction, button: discord.ui.Button):
         view = ColorSelectView(self.db, self.user_id, self)
-        embed = discord.Embed(
-            title="🎨 Select Embed Color",
-            description="Choose your profile embed color from the dropdown below:",
-            color=0x00d4ff
-        )
-        await interaction.response.edit_message(embed=embed, view=view)
+        content = "## 🎨 Select Embed Color\n\nChoose your profile embed color from the dropdown below:"
+        await interaction.response.edit_message(content=content, view=view)
 
 class BioModal(discord.ui.Modal):
     def __init__(self, db, user_id, parent_view, existing_bio=None):
@@ -184,8 +146,8 @@ class BioModal(discord.ui.Modal):
             str(self.user_id), 
             gaming_bio=self.bio.value
         )
-        embed = await self.parent_view.refresh_embed(interaction)
-        await interaction.response.edit_message(embed=embed, view=self.parent_view)
+        content = await self.parent_view.refresh_content(interaction)
+        await interaction.response.edit_message(content=content, view=self.parent_view)
 
 class SocialLinksModal(discord.ui.Modal):
     def __init__(self, db, user_id, parent_view, existing_links=None):
@@ -275,8 +237,8 @@ class SocialLinksModal(discord.ui.Modal):
             str(self.user_id),
             social_links=json.dumps(existing_links)
         )
-        embed = await self.parent_view.refresh_embed(interaction)
-        await interaction.response.edit_message(embed=embed, view=self.parent_view)
+        content = await self.parent_view.refresh_content(interaction)
+        await interaction.response.edit_message(content=content, view=self.parent_view)
 
 class TeamModal(discord.ui.Modal):
     def __init__(self, db, user_id, parent_view):
@@ -298,8 +260,8 @@ class TeamModal(discord.ui.Modal):
             str(self.user_id),
             team_affiliation=self.team.value
         )
-        embed = await self.parent_view.refresh_embed(interaction)
-        await interaction.response.edit_message(embed=embed, view=self.parent_view)
+        content = await self.parent_view.refresh_content(interaction)
+        await interaction.response.edit_message(content=content, view=self.parent_view)
 
 class GameSelectView(discord.ui.View):
     def __init__(self, db, user_id, parent_view):
@@ -320,8 +282,8 @@ class GameSelectView(discord.ui.View):
             str(self.user_id),
             main_game=select.values[0]
         )
-        embed = await self.parent_view.refresh_embed(interaction)
-        await interaction.response.edit_message(embed=embed, view=self.parent_view)
+        content = await self.parent_view.refresh_content(interaction)
+        await interaction.response.edit_message(content=content, view=self.parent_view)
 
 class TimezoneSelectView(discord.ui.View):
     def __init__(self, db, user_id, parent_view):
@@ -342,8 +304,8 @@ class TimezoneSelectView(discord.ui.View):
             str(self.user_id),
             timezone=select.values[0]
         )
-        embed = await self.parent_view.refresh_embed(interaction)
-        await interaction.response.edit_message(embed=embed, view=self.parent_view)
+        content = await self.parent_view.refresh_content(interaction)
+        await interaction.response.edit_message(content=content, view=self.parent_view)
 
 class ColorSelectView(discord.ui.View):
     def __init__(self, db, user_id, parent_view):
@@ -364,5 +326,5 @@ class ColorSelectView(discord.ui.View):
             str(self.user_id),
             embed_color=select.values[0]
         )
-        embed = await self.parent_view.refresh_embed(interaction)
-        await interaction.response.edit_message(embed=embed, view=self.parent_view)
+        content = await self.parent_view.refresh_content(interaction)
+        await interaction.response.edit_message(content=content, view=self.parent_view)

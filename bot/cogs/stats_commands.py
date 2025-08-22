@@ -268,9 +268,9 @@ class Commands(commands.Cog):
 			await self.db.create_user_profile(i.guild_id, i.user.id)
 		
 		view = ProfileEditView(self.db, i.user.id)
-		embed = await view.refresh_embed(i)
+		content = await view.refresh_content(i)
 		
-		await i.response.send_message(embed=embed, view=view, ephemeral=True)
+		await i.response.send_message(content=content, view=view, ephemeral=True)
 
 	admin = app_commands.Group(
 		name='admin', 

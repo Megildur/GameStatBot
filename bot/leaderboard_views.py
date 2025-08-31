@@ -25,7 +25,7 @@ STAT_BUTTONS_CONFIG = [
 	("wl", "🏅", "W/L"),
 	("earnings", "💰", "Earnings"),
 	("tournaments_played", "🏆", "Tournaments"),
-	("tournaments_won", "🥇", "T. Won"),
+	("tournaments_won", "🥇", "Tournaments Won"),
 ]
 
 def format_stat_value(stat, value):

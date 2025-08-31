@@ -236,42 +236,39 @@ class Commands(commands.Cog):
 		user='The user to show the stats for(defaults to yourself)'
 	)
 	async def view(self, i: Interaction, user: Optional[discord.Member], game: Optional[str] = None) -> None:
-		stats = await self.db.get_stats(i.guild_id, user.id if user else i.user.id, game, stat=None)
+		target_user = user if user else i.user
+		stats = await self.db.get_stats(i.guild_id, target_user.id, game, stat=None)
+		
+		container = discord.ui.Container(accent_color=0x00d4ff)
+		
+		# Header
+		header_text = f"# 📊 Gaming Statistics\n🎯 **Player:** {target_user.mention}"
+		container.add_item(discord.ui.TextDisplay(header_text))
+		container.add_item(discord.ui.Separator(spacing=discord.SeparatorSpacing.large))
+		
 		if stats is None or (isinstance(stats, list) and len(stats) == 0):
-			embed = discord.Embed(
-				title="📈 No Statistics Found",
-				description=f"🔍 **Player:** {user.mention if user else i.user.mention}\n\n❌ This player has no gaming statistics recorded yet.\n\n💡 *Start playing tournaments to build your stats!*",
-				color=0xff6b6b
-			)
-			await i.response.send_message(embed=embed)
-			return
+			# No stats found
+			container.add_item(discord.ui.TextDisplay("## ❌ No Statistics Found"))
+			no_stats_text = f"This player has no gaming statistics recorded yet.\n\n💡 *Start playing tournaments to build your stats!*"
+			container.add_item(discord.ui.TextDisplay(no_stats_text))
+		else:
+			if isinstance(stats, tuple):
+				# Single game stats
+				tournaments_played = stats[0]
+				tournaments_won = stats[1]
+				earnings = stats[2]
+				kills = stats[3]
+				deaths = stats[4]
+				kd = stats[5]
+				wins = stats[6]
+				losses = stats[7]
+				wl = stats[8]
 
-		embed = discord.Embed(
-			title=f"📊 Gaming Statistics",
-			description=f"🎯 **Player:** {user.mention if user else i.user.mention}\n━━━━━━━━━━━━━━━━━━━━━━━━━━",
-			color=0x00d4ff
-		)
-		embed.set_thumbnail(url=user.display_avatar.url if user else i.user.display_avatar.url)
-		embed.set_footer(
-			text="🎮 Live Gaming Stats • Real-time Data"
-		)
-
-		if isinstance(stats, tuple):
-			tournaments_played = stats[0]
-			tournaments_won = stats[1]
-			earnings = stats[2]
-			kills = stats[3]
-			deaths = stats[4]
-			kd = stats[5]
-			wins = stats[6]
-			losses = stats[7]
-			wl = stats[8]
-
-			game_name = self.game_display_names.get(game, game)
-
-			embed.add_field(
-				name=f"🎮 {game_name}",
-				value=(
+				game_name = self.game_display_names.get(game, game)
+				
+				container.add_item(discord.ui.TextDisplay(f"## 🎮 {game_name}"))
+				
+				stats_text = (
 					f"🏆 **Tournaments Played:** `{tournaments_played}`\n"
 					f"🥇 **Tournaments Won:** `{tournaments_won}`\n"
 					f"💰 **Earnings:** `${earnings:,}`\n"
@@ -281,27 +278,30 @@ class Commands(commands.Cog):
 					f"✅ **Wins:** `{wins:,}`\n"
 					f"❌ **Losses:** `{losses:,}`\n"
 					f"🏅 **W/L Ratio:** `{wl:.2f}`"
-				),
-				inline=False
-			)
-		else:
+				)
+				
+				container.add_item(discord.ui.TextDisplay(stats_text))
+			else:
+				# Multiple games stats
+				for idx, game_stats in enumerate(stats):
+					if idx > 0:
+						container.add_item(discord.ui.Separator(spacing=discord.SeparatorSpacing.large))
+					
+					game_code = game_stats[0]
+					game_name = self.game_display_names.get(game_code, game_code)
+					tournaments_played = game_stats[1]
+					tournaments_won = game_stats[2]
+					earnings = game_stats[3]
+					kills = game_stats[4]
+					deaths = game_stats[5]
+					kd = game_stats[6]
+					wins = game_stats[7]
+					losses = game_stats[8]
+					wl = game_stats[9]
 
-			for game_stats in stats:
-				game_code = game_stats[0]
-				game_name = self.game_display_names.get(game_code, game_code)
-				tournaments_played = game_stats[1]
-				tournaments_won = game_stats[2]
-				earnings = game_stats[3]
-				kills = game_stats[4]
-				deaths = game_stats[5]
-				kd = game_stats[6]
-				wins = game_stats[7]
-				losses = game_stats[8]
-				wl = game_stats[9]
-
-				embed.add_field(
-					name=f"🎮 {game_name}",
-					value=(
+					container.add_item(discord.ui.TextDisplay(f"## 🎮 {game_name}"))
+					
+					stats_text = (
 						f"🏆 **Tournaments Played:** `{tournaments_played}`\n"
 						f"🥇 **Tournaments Won:** `{tournaments_won}`\n"
 						f"💰 **Earnings:** `${earnings:,}`\n"
@@ -311,11 +311,17 @@ class Commands(commands.Cog):
 						f"✅ **Wins:** `{wins:,}`\n"
 						f"❌ **Losses:** `{losses:,}`\n"
 						f"🏅 **W/L Ratio:** `{wl:.2f}`"
-					),
-					inline=False
-				)
+					)
+					
+					container.add_item(discord.ui.TextDisplay(stats_text))
+		
+		# Footer
+		container.add_item(discord.ui.Separator(spacing=discord.SeparatorSpacing.small))
+		container.add_item(discord.ui.TextDisplay("-# 🎮 Live Gaming Stats • Real-time Data"))
 
-		await i.response.send_message(embed=embed)
+		view = discord.ui.LayoutView()
+		view.add_item(container)
+		await i.response.send_message(view=view)
 
 	set = app_commands.Group(
 		name='set',

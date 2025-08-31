@@ -234,45 +234,52 @@ class SyncCog(commands.Cog):
             
     @app_commands.command(name='help', description='Show help for slash commands')
     async def help(self, ctx):
-        embed = discord.Embed(
-            title='🤖 Bot Help Center',
-            description='📋 **Available Slash Commands**\n\n*Use `/` followed by the command name to execute*',
-            color=0x00ff88
-        )
+        container = discord.ui.Container(accent_color=0x00ff88)
+        
+        # Header
+        header = discord.ui.TextDisplay('# 🤖 Bot Help Center\n📋 **Available Slash Commands**\n\n*Use `/` followed by the command name to execute*')
+        container.add_item(header)
+        container.add_item(discord.ui.Separator(spacing=discord.SeparatorSpacing.large))
+        
+        # Collect admin commands
         admin_commands = []
         for command in self.bot.tree.walk_commands(type=discord.AppCommandType.chat_input):
             if command.root_parent is not None and command.root_parent.name == "admin" and not isinstance(command, discord.app_commands.Group):
                 admin_commands.append(f'🔧 `/{command.qualified_name}`\n└ {command.description}')
-        if admin_commands:
-            embed.add_field(
-                name='🛡️ **Admin Commands**',
-                value='*Restricted to server administrators*\n\n' + '\n\n'.join(admin_commands),
-                inline=False
-            )
+        
+        # Collect user commands
         user_commands = []
         for command in self.bot.tree.walk_commands(type=discord.AppCommandType.chat_input):
             if command.root_parent is None and not isinstance(command, discord.app_commands.Group):
                 user_commands.append(f'👤 `/{command.qualified_name}`\n└ {command.description}')
             elif command.root_parent is not None and command.root_parent.name != "admin" and not isinstance(command, discord.app_commands.Group):
                 user_commands.append(f'👤 `/{command.qualified_name}`\n└ {command.description}')
+        
+        # User Commands Section
         if user_commands:
-            embed.add_field(
-                name='🌟 **User Commands**',
-                value='*Available to all users*\n\n' + '\n\n'.join(user_commands),
-                inline=False
-            )
+            container.add_item(discord.ui.TextDisplay('## 🌟 User Commands\n*Available to all users*'))
+            user_commands_text = '\n\n'.join(user_commands)
+            container.add_item(discord.ui.TextDisplay(user_commands_text))
+            container.add_item(discord.ui.Separator(spacing=discord.SeparatorSpacing.large))
+        
+        # Admin Commands Section
+        if admin_commands:
+            container.add_item(discord.ui.TextDisplay('## 🛡️ Admin Commands\n*Restricted to server administrators*'))
+            admin_commands_text = '\n\n'.join(admin_commands)
+            container.add_item(discord.ui.TextDisplay(admin_commands_text))
+            container.add_item(discord.ui.Separator(spacing=discord.SeparatorSpacing.large))
+        
+        # No commands found
         if not admin_commands and not user_commands:
-            embed.add_field(
-                name='❌ No Commands Found',
-                value='No slash commands are currently available.',
-                inline=False
-            )
-        embed.set_footer(
-            text='💡 Tip: Commands are synced automatically • Need more help? Contact an admin',
-            icon_url=self.bot.user.avatar.url if self.bot.user.avatar else None
-        )
-        embed.set_thumbnail(url=self.bot.user.avatar.url if self.bot.user.avatar else None)
-        await ctx.response.send_message(embed=embed)
+            container.add_item(discord.ui.TextDisplay('## ❌ No Commands Found\nNo slash commands are currently available.'))
+            container.add_item(discord.ui.Separator(spacing=discord.SeparatorSpacing.large))
+        
+        # Footer
+        container.add_item(discord.ui.TextDisplay('-# 💡 Tip: Commands are synced automatically • Need more help? Contact an admin'))
+        
+        view = discord.ui.LayoutView()
+        view.add_item(container)
+        await ctx.response.send_message(view=view)
     
     @commands.Cog.listener()
     async def on_command_error(self, ctx, error):

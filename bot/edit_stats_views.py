@@ -124,8 +124,8 @@ class SetStatsView(ui.LayoutView):
 		container.add_item(header)
 		container.add_item(ui.Separator(spacing=discord.SeparatorSpacing.large))
 
-		kd_ratio = stats[2] / stats[3] if stats[3] > 0 else 0.0
-		wl_ratio = stats[5] / stats[6] if stats[6] > 0 else 0.0
+		kd_ratio = stats[3] / stats[4] if stats[4] > 0 else 0.0
+		wl_ratio = stats[6] / stats[7] if stats[7] > 0 else 0.0
 
 		status_text = "✅ Stats Updated Successfully!" if self.just_updated else "Ready to Edit"
 		status_emoji = "✅" if self.just_updated else "🎮"
@@ -133,13 +133,14 @@ class SetStatsView(ui.LayoutView):
 		stats_text = (
 			f'## 📈 Current Statistics\n'
 			f'🏆 **Tournaments Played:** `{stats[0]}`\n'
-			f'💰 **Earnings:** `${stats[1]:,}`\n'
+			f'🥇 **Tournaments Won:** `{stats[1]}`\n'
+			f'💰 **Earnings:** `${stats[2]:,}`\n'
 			f'🎯 **K/D Ratio:** `{kd_ratio:.2f}`\n'
-			f'⚔️ **Kills:** `{stats[2]}`\n'
-			f'💀 **Deaths:** `{stats[3]}`\n'
+			f'⚔️ **Kills:** `{stats[3]}`\n'
+			f'💀 **Deaths:** `{stats[4]}`\n'
 			f'🏅 **W/L Ratio:** `{wl_ratio:.2f}`\n'
-			f'✅ **Wins:** `{stats[5]}`\n'
-			f'❌ **Losses:** `{stats[6]}`\n'
+			f'✅ **Wins:** `{stats[6]}`\n'
+			f'❌ **Losses:** `{stats[7]}`\n'
 			f'{status_emoji} **Status:** `{status_text}`'
 		)
 
@@ -198,10 +199,10 @@ class SetStatsModal(ui.Modal):
 		self.game = game
 
 		self.tournaments = ui.TextInput(
-			label="🏆 Tournaments Played",
-			placeholder="Enter number of tournaments...",
+			label="🏆 Tournaments (format: played,won)",
+			placeholder="Enter tournaments played,won (e.g., 15,3)...",
 			required=False,
-			max_length=10
+			max_length=20
 		)
 		self.earnings = ui.TextInput(
 			label="💰 Earnings ($)",
@@ -239,7 +240,9 @@ class SetStatsModal(ui.Modal):
 			stats_to_update = {}
 
 			if self.tournaments.value:
-				stats_to_update['tournaments_played'] = int(self.tournaments.value)
+				tournaments_played, tournaments_won = map(int, self.tournaments.value.split(','))
+				stats_to_update['tournaments_played'] = tournaments_played
+				stats_to_update['tournaments_won'] = tournaments_won
 			if self.earnings.value:
 				stats_to_update['earnings'] = int(self.earnings.value)
 			if self.kills.value:

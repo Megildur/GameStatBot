@@ -17,15 +17,15 @@ STAT_DISPLAY_MAP = {
 }
 
 STAT_BUTTONS_CONFIG = [
-	("kills", "⚔️", "Kills", 0),
-	("deaths", "💀", "Deaths", 0),
-	("kd", "🎯", "K/D Ratio", 0),
-	("wins", "✅", "Wins", 1),
-	("losses", "❌", "Losses", 1),
-	("wl", "🏅", "W/L Ratio", 1),
-	("earnings", "💰", "Earnings", 2),
-	("tournaments_played", "🏆", "Tournaments", 2),
-	("tournaments_won", "🥇", "T. Won", 2),
+	("kills", "⚔️", "Kills"),
+	("deaths", "💀", "Deaths"),
+	("kd", "🎯", "K/D"),
+	("wins", "✅", "Wins"),
+	("losses", "❌", "Losses"),
+	("wl", "🏅", "W/L"),
+	("earnings", "💰", "Earnings"),
+	("tournaments_played", "🏆", "Tournaments"),
+	("tournaments_won", "🥇", "T. Won"),
 ]
 
 def format_stat_value(stat, value):
@@ -57,7 +57,7 @@ def sort_stats(stats, stat):
 	else:
 		return sorted(stats, key=lambda x: x[1], reverse=True)
 
-class ContainerPaginator(ui.LayoutView):
+class LeaderboardView(discord.ui.View):
 	def __init__(self, db, bot, game, stat, guild_id, **kwargs):
 		super().__init__(timeout=kwargs.get('timeout', 300))
 		self.db = db
@@ -119,31 +119,28 @@ class ContainerPaginator(ui.LayoutView):
 		self.pages = pages
 		self.max_pages = len(self.pages)
 
-	def create_leaderboard_container(self, page_stats=None):
-		container = ui.Container()
-
-		# Header
+	def create_embed(self, page_stats=None):
 		game_name = get_game_name(self.game)
 		stat_name = STAT_DISPLAY_MAP.get(self.stat, self.stat)
 
+		embed = discord.Embed(
+			title=f"🏆 Leaderboard: {game_name}",
+			color=0x00d4ff
+		)
+
 		if page_stats is None:
-			header_text = f"# 🏆 Leaderboard: {game_name}\n## {stat_name}\n\n❌ No data available for this game/stat combination."
+			embed.description = f"**{stat_name}**\n\n❌ No data available for this game/stat combination."
 		else:
 			total_players = sum(len(page) for page in self.pages)
 			start_position = self.current_page * self.players_per_page + 1
 			end_position = min(start_position + len(page_stats) - 1, total_players)
 
-			header_text = f"# 🏆 Leaderboard: {game_name}\n## {stat_name}\n\n📈 **Players {start_position}-{end_position} of {total_players}:**"
+			embed.description = f"**{stat_name}**\n\n📈 **Players {start_position}-{end_position} of {total_players}:**"
 
-		container.add_item(ui.TextDisplay(header_text))
-
-		if page_stats:
-			container.add_item(ui.Separator(spacing=discord.SeparatorSpacing.small))
-
-			# Player entries
 			guild = self.bot.get_guild(self.guild_id)
 			start_position = self.current_page * self.players_per_page + 1
 
+			leaderboard_text = ""
 			for idx, (user_id, stat_value) in enumerate(page_stats):
 				position = start_position + idx
 				medal = get_medal_emoji(position)
@@ -154,64 +151,71 @@ class ContainerPaginator(ui.LayoutView):
 					user = guild.get_member(int(user_id))
 
 				user_display = user.display_name if user else f"User {user_id}"
+				leaderboard_text += f"{medal} **{user_display}** - `{value_display}`\n"
 
-				container.add_item(
-					ui.TextDisplay(f"### {medal} {user_display}\n`{value_display}`")
-				)
+			embed.add_field(name="Rankings", value=leaderboard_text, inline=False)
 
-		container.add_item(ui.Separator(spacing=discord.SeparatorSpacing.small))
-
-		# Navigation buttons
+		footer_text = "🎮 Leaderboard • Updated in real-time"
 		if self.max_pages > 1:
-			nav_row = ui.ActionRow()
+			footer_text = f"🎮 Leaderboard • Page {self.current_page + 1}/{self.max_pages} • Updated in real-time"
 
-			prev_button = ui.Button(
+		embed.set_footer(text=footer_text)
+		return embed
+
+	def update_buttons(self):
+		# Clear all items first
+		self.clear_items()
+
+		# Add navigation buttons if multiple pages
+		if self.max_pages > 1:
+			prev_button = discord.ui.Button(
 				label="◀️ Previous",
 				style=discord.ButtonStyle.secondary,
-				disabled=self.current_page == 0
+				disabled=self.current_page == 0,
+				row=0
 			)
 			prev_button.callback = self._previous_callback
-			nav_row.add_item(prev_button)
+			self.add_item(prev_button)
 
-			page_indicator = ui.Button(
+			page_button = discord.ui.Button(
 				label=f"Page {self.current_page + 1}/{self.max_pages}",
 				style=discord.ButtonStyle.primary,
-				disabled=True
+				disabled=True,
+				row=0
 			)
-			nav_row.add_item(page_indicator)
+			self.add_item(page_button)
 
-			next_button = ui.Button(
+			next_button = discord.ui.Button(
 				label="Next ▶️",
 				style=discord.ButtonStyle.secondary,
-				disabled=self.current_page == self.max_pages - 1
+				disabled=self.current_page == self.max_pages - 1,
+				row=0
 			)
 			next_button.callback = self._next_callback
-			nav_row.add_item(next_button)
+			self.add_item(next_button)
 
-			container.add_item(nav_row)
-
-		# Game selector
-		game_select = ui.Select(
+		# Add game selector
+		game_select = discord.ui.Select(
 			placeholder="Choose a different game",
 			options=GAME_OPTIONS,
 			min_values=0,
-			max_values=1
+			max_values=1,
+			row=1
 		)
 		game_select.callback = self._game_select_callback
-		container.add_item(game_select)
+		self.add_item(game_select)
 
-		container.add_item(ui.Separator(spacing=discord.SeparatorSpacing.small))
-
-		# Stat buttons
+		# Add stat buttons in rows
 		for i in range(0, len(STAT_BUTTONS_CONFIG), 3):
-			button_row = ui.ActionRow()
+			row_num = 2 + (i // 3)
 			for j in range(3):
 				if i + j < len(STAT_BUTTONS_CONFIG):
-					stat_name, emoji, label, _ = STAT_BUTTONS_CONFIG[i + j]
-					button = ui.Button(
+					stat_name, emoji, label = STAT_BUTTONS_CONFIG[i + j]
+					button = discord.ui.Button(
 						label=label,
 						style=discord.ButtonStyle.secondary,
-						emoji=emoji
+						emoji=emoji,
+						row=row_num
 					)
 
 					async def make_callback(stat):
@@ -221,18 +225,7 @@ class ContainerPaginator(ui.LayoutView):
 						return callback
 
 					button.callback = make_callback(stat_name)
-					button_row.add_item(button)
-
-			container.add_item(button_row)
-
-		footer_text = "🎮 Leaderboard • Updated in real-time"
-		if self.max_pages > 1:
-			footer_text = f"🎮 Leaderboard • Page {self.current_page + 1} • Updated in real-time"
-
-		container.add_item(ui.Separator(spacing=discord.SeparatorSpacing.small))
-		container.add_item(ui.TextDisplay(f"-# {footer_text}"))
-
-		return container
+					self.add_item(button)
 
 	async def _previous_callback(self, interaction: Interaction):
 		if self.current_page > 0:
@@ -245,26 +238,23 @@ class ContainerPaginator(ui.LayoutView):
 			await self.update_page(interaction)
 
 	async def _game_select_callback(self, interaction: Interaction):
-		# Find the select component and get its values
 		if hasattr(interaction.data, 'values') and interaction.data['values']:
 			self.game = interaction.data['values'][0]
 			await self.update_leaderboard_data(interaction)
 
 	async def update_page(self, interaction: Interaction):
 		page_stats = self.pages[self.current_page] if self.pages and self.current_page < len(self.pages) else None
-		container = self.create_leaderboard_container(page_stats)
-		self.clear_items()
-		self.add_item(container)
-		await interaction.response.edit_message(view=self)
+		embed = self.create_embed(page_stats)
+		self.update_buttons()
+		await interaction.response.edit_message(embed=embed, view=self)
 
 	async def update_leaderboard_data(self, interaction: Interaction):
 		await self.setup_pages()
 		self.current_page = 0
 		page_stats = self.pages[self.current_page] if self.pages and self.current_page < len(self.pages) else None
-		container = self.create_leaderboard_container(page_stats)
-		self.clear_items()
-		self.add_item(container)
-		await interaction.response.edit_message(view=self)
+		embed = self.create_embed(page_stats)
+		self.update_buttons()
+		await interaction.response.edit_message(embed=embed, view=self)
 
 	async def interaction_check(self, interaction: Interaction) -> bool:
 		if not self.author_id:
@@ -279,10 +269,10 @@ class ContainerPaginator(ui.LayoutView):
 	async def start(self, interaction: Interaction):
 		await self.setup_pages()
 		page_stats = self.pages[self.current_page] if self.pages and self.current_page < len(self.pages) else None
-		container = self.create_leaderboard_container(page_stats)
-		self.clear_items()
-		self.add_item(container)
-		await interaction.response.send_message(view=self)
+		embed = self.create_embed(page_stats)
+		self.update_buttons()
+		await interaction.response.send_message(embed=embed, view=self)
 
-# Keep the old classes for backwards compatibility but make them use the new container system
-LeaderboardPaginator = ContainerPaginator
+# Keep backwards compatibility
+LeaderboardPaginator = LeaderboardView
+ContainerPaginator = LeaderboardView

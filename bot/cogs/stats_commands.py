@@ -158,11 +158,67 @@ class Commands(commands.Cog):
 			)
 		
 		# Container implementation for profile
-		view = discord.ui.View()
-		container = discord.ui.Activity()
-		container.add_item(ui.Separator(spacing=discord.SeparatorSpacing.small))
-		container.add_item(ui.TextDisplay("-# 🎮 Gaming Profile • Use /stats set profile to edit"))
+		container = discord.ui.Container(accent_color=int(embed_color, 16))
+		
+		# Header
+		header_text = f"# 🎮 {target_user.display_name}'s Gaming Profile"
+		if gaming_bio:
+			header_text += f"\n📝 **Bio:** {gaming_bio}"
+		else:
+			header_text += f"\n📝 **Bio:** *No bio set*"
+		
+		container.add_item(discord.ui.TextDisplay(header_text))
+		container.add_item(discord.ui.Separator(spacing=discord.SeparatorSpacing.large))
+		
+		# Profile Information
+		container.add_item(discord.ui.TextDisplay("## 📊 Profile Information"))
+		profile_info = f"🎯 **Main Game:** `{game_name}`\n"
+		profile_info += f"🌍 **Timezone:** `{timezone}`\n"
+		if team_affiliation:
+			profile_info += f"🏆 **Team:** `{team_affiliation}`\n"
+		
+		container.add_item(discord.ui.TextDisplay(profile_info))
+		
+		# Social Links
+		if social_links:
+			container.add_item(discord.ui.Separator(spacing=discord.SeparatorSpacing.large))
+			container.add_item(discord.ui.TextDisplay("## 🔗 Social Links"))
+			social_text = ""
+			for platform, url in social_links.items():
+				emoji_map = {
+					'twitch': '📺', 
+					'youtube': '📹', 
+					'twitter': '🐦',
+					'instagram': '📷',
+					'tiktok': '🎵'
+				}
+				emoji = emoji_map.get(platform, '🔗')
+				social_text += f"{emoji} **{platform.capitalize()}:** [Visit Profile]({url})\n"
+			
+			container.add_item(discord.ui.TextDisplay(social_text))
+		
+		# Game Stats
+		if stats:
+			tournaments_played, tournaments_won, earnings, kills, deaths, kd, wins, losses, wl = stats
+			
+			container.add_item(discord.ui.Separator(spacing=discord.SeparatorSpacing.large))
+			container.add_item(discord.ui.TextDisplay(f"## 📈 {game_name} Stats"))
+			
+			stats_text = (
+				f"🏆 **Tournaments Played:** `{tournaments_played}`\n"
+				f"🥇 **Tournaments Won:** `{tournaments_won}`\n"
+				f"💰 **Earnings:** `${earnings:,}`\n"
+				f"🎯 **K/D Ratio:** `{kd:.2f}`\n"
+				f"🏅 **W/L Ratio:** `{wl:.2f}`"
+			)
+			
+			container.add_item(discord.ui.TextDisplay(stats_text))
+		
+		# Footer
+		container.add_item(discord.ui.Separator(spacing=discord.SeparatorSpacing.small))
+		container.add_item(discord.ui.TextDisplay("-# 🎮 Gaming Profile • Use /stats set profile to edit"))
 
+		view = discord.ui.LayoutView()
 		view.add_item(container)
 		await i.response.send_message(view=view)
 

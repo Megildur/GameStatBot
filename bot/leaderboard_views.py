@@ -191,7 +191,7 @@ class ContainerPaginator(ui.LayoutView):
 			container.add_item(nav_row)
 
 		# Game selector
-		game_select = ui.Select(
+		game_select = ui.StringSelect(
 			placeholder="Choose a different game",
 			options=GAME_OPTIONS,
 			min_values=0,

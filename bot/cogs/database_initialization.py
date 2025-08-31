@@ -37,6 +37,7 @@ class DatabaseInitializationCog(commands.Cog):
                                 str(member.id),
                                 game,
                                 tournaments_played=0,
+                                tournaments_won=0,
                                 earnings=0,
                                 kills=0,
                                 deaths=0,

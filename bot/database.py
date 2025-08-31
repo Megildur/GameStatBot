@@ -13,6 +13,7 @@ class GameStatsDatabase:
                     user_id TEXT,
                     game_name TEXT,
                     tournaments_played INTEGER DEFAULT 0,
+                    tournaments_won INTEGER DEFAULT 0,
                     earnings INTEGER DEFAULT 0,
                     kills INTEGER DEFAULT 0,
                     deaths INTEGER DEFAULT 0,
@@ -23,6 +24,16 @@ class GameStatsDatabase:
                     UNIQUE(server_id, user_id, game_name)
                 )
             ''')
+            
+            # Add tournaments_won column if it doesn't exist (for existing databases)
+            try:
+                await db.execute('''
+                    ALTER TABLE game_stats ADD COLUMN tournaments_won INTEGER DEFAULT 0
+                ''')
+                await db.commit()
+            except Exception:
+                # Column already exists, ignore the error
+                pass
             await db.execute('''
                 CREATE INDEX IF NOT EXISTS idx_stats_lookup 
                 ON game_stats(server_id, user_id, game_name)
@@ -63,7 +74,7 @@ class GameStatsDatabase:
 
             if existing_stats:
                 updated_stats = {}
-                stat_names = ['tournaments_played', 'earnings', 'kills', 'deaths', 'kd', 'wins', 'losses', 'wl']
+                stat_names = ['tournaments_played', 'tournaments_won', 'earnings', 'kills', 'deaths', 'kd', 'wins', 'losses', 'wl']
                 for i, stat_name in enumerate(stat_names):
                     if stat_name not in ['kd', 'wl']:
                         if stat_name in stats:
@@ -89,6 +100,7 @@ class GameStatsDatabase:
             else:
                 final_stats = {}
                 final_stats['tournaments_played'] = stats.get('tournaments_played', 0)
+                final_stats['tournaments_won'] = stats.get('tournaments_won', 0)
                 final_stats['earnings'] = stats.get('earnings', 0)
                 final_stats['kills'] = stats.get('kills', 0)
                 final_stats['deaths'] = stats.get('deaths', 0)
@@ -98,8 +110,8 @@ class GameStatsDatabase:
                 final_stats['wl'] = final_stats['wins'] / final_stats['losses'] if final_stats['losses'] > 0 else 0.0
 
                 await db.execute('''
-                    INSERT INTO game_stats (server_id, user_id, game_name, tournaments_played, earnings, kills, deaths, kd, wins, losses, wl)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    INSERT INTO game_stats (server_id, user_id, game_name, tournaments_played, tournaments_won, earnings, kills, deaths, kd, wins, losses, wl)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 ''', [server_id, user_id, game_name] + list(final_stats.values()))
 
                 final_stats = list(final_stats.values())
@@ -111,6 +123,7 @@ class GameStatsDatabase:
         async with aiosqlite.connect(self.db_file) as db:
             available_stats = {
                 'tournaments_played': 'tournaments_played',
+                'tournaments_won': 'tournaments_won',
                 'earnings': 'earnings', 
                 'kills': 'kills',
                 'deaths': 'deaths',
@@ -120,12 +133,12 @@ class GameStatsDatabase:
                 'wl': 'wl'
             }
             if user_id is None:
-                base_columns = "user_id, game_name, tournaments_played, earnings, kills, deaths, kd, wins, losses, wl"
+                base_columns = "user_id, game_name, tournaments_played, tournaments_won, earnings, kills, deaths, kd, wins, losses, wl"
             else:
                 if game_name is None:
-                    base_columns = "game_name, tournaments_played, earnings, kills, deaths, kd, wins, losses, wl"
+                    base_columns = "game_name, tournaments_played, tournaments_won, earnings, kills, deaths, kd, wins, losses, wl"
                 else:
-                    base_columns = "tournaments_played, earnings, kills, deaths, kd, wins, losses, wl"
+                    base_columns = "tournaments_played, tournaments_won, earnings, kills, deaths, kd, wins, losses, wl"
             if stat is not None:
                 if isinstance(stat, str):
                     stats_to_select = [stat] if stat in available_stats else []

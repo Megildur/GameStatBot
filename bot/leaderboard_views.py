@@ -159,28 +159,24 @@ class LeaderboardView(ui.LayoutView):
 
 		# Navigation section
 		if self.max_pages > 1:
-			nav_section = ui.Section()
-			nav_section.add_item(ui.TextDisplay("## 📄 Navigation"))
-
 			nav_row = ui.ActionRow()
 			if self.current_page > 0:
 				nav_row.add_item(PreviousButton())
 			nav_row.add_item(PageIndicatorButton(self.current_page + 1, self.max_pages))
 			if self.current_page < self.max_pages - 1:
 				nav_row.add_item(NextButton())
+			container.add_item(nav_row)
 
-			nav_section.add_item(nav_row)
-			container.add_item(nav_section)
+		container.add_item(ui.Separator(spacing=discord.SeparatorSpacing.large))
 
 		# Game selection section
-		game_section = ui.Section()
-		game_section.add_item(ui.TextDisplay("## 🎮 Game Selection"))
-		game_section.add_item(GameSelectDropdown(self.db, self))
-		container.add_item(game_section)
+		container.add_item(ui.TextDisplay("## 🎮 Game Selection"))
+		container.add_item(GameSelectDropdown(self.db, self))
 
-		# Stats selection section
-		stats_section = ui.Section()
-		stats_section.add_item(ui.TextDisplay("## 📊 Statistics"))
+		container.add_item(ui.Separator(spacing=discord.SeparatorSpacing.large))
+
+		# Stats selection section  
+		container.add_item(ui.TextDisplay("## 📊 Statistics"))
 
 		# Create stat button rows
 		for i in range(0, len(STAT_BUTTONS_CONFIG), 3):
@@ -189,9 +185,7 @@ class LeaderboardView(ui.LayoutView):
 				if i + j < len(STAT_BUTTONS_CONFIG):
 					stat_name, emoji, label = STAT_BUTTONS_CONFIG[i + j]
 					stat_row.add_item(StatButton(stat_name, emoji, label, self))
-			stats_section.add_item(stat_row)
-
-		container.add_item(stats_section)
+			container.add_item(stat_row)
 
 		footer_text = "🎮 Leaderboard • Updated in real-time"
 		if self.max_pages > 1:
@@ -284,15 +278,19 @@ class GameSelectDropdown(ui.ActionRow):
 		super().__init__()
 		self.db = db
 		self.parent_view = parent_view
+		
+		select = ui.Select(
+			placeholder="Choose a different game",
+			options=GAME_OPTIONS,
+			min_values=1,
+			max_values=1
+		)
+		select.callback = self.select_game_callback
+		self.add_item(select)
 
-	@ui.select(
-		placeholder="Choose a different game",
-		options=GAME_OPTIONS,
-		min_values=1,
-		max_values=1
-	)
-	async def select_game(self, interaction: Interaction, select: ui.Select):
-		self.parent_view.game = select.values[0]
+	async def select_game_callback(self, interaction: Interaction):
+		select = interaction.data['values'][0]
+		self.parent_view.game = select
 		await self.parent_view.update_leaderboard_data(interaction)
 
 # Keep backwards compatibility

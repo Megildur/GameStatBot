@@ -41,12 +41,12 @@ class Commands(commands.Cog):
 		print(f"Commands loaded")
 
 	stats = app_commands.Group(
-		name='stats', 
+		name='stats',
 		description='Stats commands'
 	)
 
 	@stats.command(
-		name='leaderboard', 
+		name='leaderboard',
 		description='Shows the leaderboard'
 	)
 	@app_commands.choices(
@@ -74,8 +74,8 @@ class Commands(commands.Cog):
 		paginator = LeaderboardPaginator(
 			self.db,
 			self.bot,
-			game, 
-			stat, 
+			game,
+			stat,
 			i.guild_id,
 			author_id=i.user.id,
 			timeout=300
@@ -84,7 +84,7 @@ class Commands(commands.Cog):
 		await paginator.start(i)
 
 	@stats.command(
-		name='profile', 
+		name='profile',
 		description='Shows user profile'
 	)
 	@app_commands.describe(
@@ -99,7 +99,7 @@ class Commands(commands.Cog):
 
 		gaming_bio, main_game, social_links_str, embed_color, timezone, team_affiliation = profile
 		social_links = json.loads(social_links_str) if social_links_str else {}
-		stats = await self.db.get_stats(i.guild_id, target_user.id, main_game, stat=None)
+		stats = await self.db.get_stats(i.guild_id, target_user.id, main_game, stat=None) if main_game else None
 
 		embed = discord.Embed(
 			title=f"🎮 {target_user.display_name}'s Gaming Profile",
@@ -108,7 +108,7 @@ class Commands(commands.Cog):
 		)
 		embed.set_thumbnail(url=target_user.display_avatar.url)
 
-		game_name = self.game_display_names.get(main_game, main_game)
+		game_name = self.game_display_names.get(main_game, "Unknown Game") if main_game else "No game selected"
 
 		profile_info = f"🎯 **Main Game:** `{game_name}`\n"
 		profile_info += f"🌍 **Timezone:** `{timezone}`\n"
@@ -125,8 +125,8 @@ class Commands(commands.Cog):
 			social_text = ""
 			for platform, url in social_links.items():
 				emoji_map = {
-					'twitch': '📺', 
-					'youtube': '📹', 
+					'twitch': '📺',
+					'youtube': '📹',
 					'twitter': '🐦',
 					'instagram': '📷',
 					'tiktok': '🎵'
@@ -156,29 +156,29 @@ class Commands(commands.Cog):
 				value=stats_text,
 				inline=True
 			)
-		
+
 		# Container implementation for profile
 		container = discord.ui.Container(accent_color=int(embed_color, 16))
-		
+
 		# Header
 		header_text = f"# 🎮 {target_user.display_name}'s Gaming Profile"
 		if gaming_bio:
 			header_text += f"\n📝 **Bio:** {gaming_bio}"
 		else:
 			header_text += f"\n📝 **Bio:** *No bio set*"
-		
+
 		container.add_item(discord.ui.TextDisplay(header_text))
 		container.add_item(discord.ui.Separator(spacing=discord.SeparatorSpacing.large))
-		
+
 		# Profile Information
 		container.add_item(discord.ui.TextDisplay("## 📊 Profile Information"))
 		profile_info = f"🎯 **Main Game:** `{game_name}`\n"
 		profile_info += f"🌍 **Timezone:** `{timezone}`\n"
 		if team_affiliation:
 			profile_info += f"🏆 **Team:** `{team_affiliation}`\n"
-		
+
 		container.add_item(discord.ui.TextDisplay(profile_info))
-		
+
 		# Social Links
 		if social_links:
 			container.add_item(discord.ui.Separator(spacing=discord.SeparatorSpacing.large))
@@ -186,24 +186,24 @@ class Commands(commands.Cog):
 			social_text = ""
 			for platform, url in social_links.items():
 				emoji_map = {
-					'twitch': '📺', 
-					'youtube': '📹', 
+					'twitch': '📺',
+					'youtube': '📹',
 					'twitter': '🐦',
 					'instagram': '📷',
 					'tiktok': '🎵'
 				}
 				emoji = emoji_map.get(platform, '🔗')
 				social_text += f"{emoji} **{platform.capitalize()}:** [Visit Profile]({url})\n"
-			
+
 			container.add_item(discord.ui.TextDisplay(social_text))
-		
+
 		# Game Stats
 		if stats:
 			tournaments_played, tournaments_won, earnings, kills, deaths, kd, wins, losses, wl = stats
-			
+
 			container.add_item(discord.ui.Separator(spacing=discord.SeparatorSpacing.large))
 			container.add_item(discord.ui.TextDisplay(f"## 📈 {game_name} Stats"))
-			
+
 			stats_text = (
 				f"🏆 **Tournaments Played:** `{tournaments_played}`\n"
 				f"🥇 **Tournaments Won:** `{tournaments_won}`\n"
@@ -211,9 +211,9 @@ class Commands(commands.Cog):
 				f"🎯 **K/D Ratio:** `{kd:.2f}`\n"
 				f"🏅 **W/L Ratio:** `{wl:.2f}`"
 			)
-			
+
 			container.add_item(discord.ui.TextDisplay(stats_text))
-		
+
 		# Footer
 		container.add_item(discord.ui.Separator(spacing=discord.SeparatorSpacing.small))
 		container.add_item(discord.ui.TextDisplay("-# 🎮 Gaming Profile • Use /stats set profile to edit"))
@@ -223,7 +223,7 @@ class Commands(commands.Cog):
 		await i.response.send_message(view=view)
 
 	@stats.command(
-		name='view', 
+		name='view',
 		description='Shows user stats'
 	)
 	@app_commands.choices(
@@ -318,13 +318,13 @@ class Commands(commands.Cog):
 		await i.response.send_message(embed=embed)
 
 	set = app_commands.Group(
-		name='set', 
-		description='Set your preferences', 
+		name='set',
+		description='Set your preferences',
 		parent=stats
 	)
 
 	@set.command(
-		name='profile', 
+		name='profile',
 		description='Set your profile descriptions'
 	)
 	async def set_profile(self, i: Interaction) -> None:
@@ -338,15 +338,15 @@ class Commands(commands.Cog):
 		await i.response.send_message(view=view, ephemeral=True)
 
 	admin = app_commands.Group(
-		name='admin', 
-		description='Admin commands', 
+		name='admin',
+		description='Admin commands',
 		default_permissions=discord.Permissions(
 			manage_guild=True
 		)
 	)
 
 	@admin.command(
-		name='set_stats', 
+		name='set_stats',
 		description='add or remove stats from users'
 	)
 	async def set_stats(self, i: Interaction) -> None:
@@ -354,7 +354,7 @@ class Commands(commands.Cog):
 		await i.response.send_message(view=view, ephemeral=True)
 
 	@admin.command(
-		name='reset_stats', 
+		name='reset_stats',
 		description='Reset all stats for a user'
 	)
 	@app_commands.describe(

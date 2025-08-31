@@ -97,7 +97,7 @@ class ProfileEditView(ui.LayoutView):
         )
 
         # Main Game Section
-        game_text = get_game_name(main_game)
+        game_text = get_game_name(main_game) if main_game else 'None selected'
         container.add_item(
             ui.Section(
                 ui.TextDisplay(f'## 🎮 Main Game\n-# Current: {game_text}'),

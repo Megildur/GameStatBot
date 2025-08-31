@@ -211,7 +211,7 @@ class GameStatsDatabase:
             await db.execute('''
                 INSERT OR IGNORE INTO user_profiles 
                 (server_id, user_id, gaming_bio, main_game, social_links, embed_color, timezone, team_affiliation)
-                VALUES (?, ?, '', 'r6s', '{}', '0x00d4ff', 'UTC', '')
+                VALUES (?, ?, '', '', '{}', '0x00d4ff', 'UTC', '')
             ''', (server_id, user_id))
             await db.commit()
 

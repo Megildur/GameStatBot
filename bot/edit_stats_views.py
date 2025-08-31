@@ -40,7 +40,7 @@ class UserSelectDropdown(ui.ActionRow['SelectUserView']):
 	@ui.select(placeholder='Select a user...', max_values=1, min_values=1, cls=ui.UserSelect)
 	async def select_user(self, interaction: Interaction, select: ui.UserSelect) -> None:
 		user = select.values[0]
-		
+
 		if user.bot:
 			container = ui.Container(accent_color=0xff6b6b)
 			header = ui.TextDisplay('# ❌ Bot User Selected\n-# Bots cannot have gaming statistics')
@@ -50,12 +50,12 @@ class UserSelectDropdown(ui.ActionRow['SelectUserView']):
 			container.add_item(ui.Separator(spacing=discord.SeparatorSpacing.small))
 			container.add_item(ui.TextDisplay('## 🔄 Try Again\n-# Use the user selector above to choose a different user'))
 			container.add_item(UserSelectDropdown(self.db))
-			
+
 			error_view = ui.LayoutView()
 			error_view.add_item(container)
 			await interaction.response.edit_message(view=error_view)
 			return
-		
+
 		await interaction.response.edit_message(view=SelectGameView(self.db, user))
 
 class SelectGameView(ui.LayoutView):
@@ -117,7 +117,6 @@ class SetStatsView(ui.LayoutView):
 		self.db = db
 		self.user = user
 		self.game = game
-		self.stats = stats
 		self.just_updated = just_updated
 
 		container = ui.Container(accent_color=0x00d4ff)
@@ -270,7 +269,7 @@ class SetStatsModal(ui.Modal):
 
 		except ValueError as e:
 			container = ui.Container(accent_color=0x00d4ff)
-			container.add_item(ui.TextDisplay('# ❌ Invalid Input\n-# Please ensure all values are valid numbers.\n-# For wins/losses, use format: `wins,losses` (e.g., `10,5`)'))
+			container.add_item(ui.TextDisplay('# ❌ Invalid Input\n-# Please ensure all values are valid numbers.\n-# For wins/losses, use format: `wins,losses` (e.g., `10,5`)\n-# For tournaments, use format: `played,won` (e.g., `15,3`)'))
 			await interaction.response.send_message(view=ui.LayoutView().add_item(container), ephemeral=True)
 		except Exception as e:
 			container = ui.Container(accent_color=0x00d4ff)

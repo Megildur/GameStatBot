@@ -24,7 +24,7 @@ STAT_BUTTONS_CONFIG = [
 	("losses", "❌", "Losses"),
 	("wl", "🏅", "W/L"),
 	("earnings", "💰", "Earnings"),
-	("tournaments_played", "🏆", "Tournaments"),
+	("tournaments_played", "🏆", "Tournaments Played"),
 	("tournaments_won", "🥇", "Tournaments Won"),
 ]
 

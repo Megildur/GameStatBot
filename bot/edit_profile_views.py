@@ -47,6 +47,20 @@ def get_timezone_display(timezone: str) -> str:
     except:
         return timezone
 
+def get_color_name(hex_value: str) -> str:
+    """Convert hex color value back to color name"""
+    color_map = {
+        "0x00d4ff": "Blue",
+        "0x00ff88": "Green", 
+        "0xff0000": "Red",
+        "0x8a2be2": "Purple",
+        "0xff6600": "Orange",
+        "0xff69b4": "Pink",
+        "0xffff00": "Yellow",
+        "0x00ffff": "Cyan"
+    }
+    return color_map.get(hex_value, hex_value)
+
 class ProfileEditView(ui.LayoutView):
     def __init__(self, db, user_id):
         super().__init__()
@@ -120,9 +134,10 @@ class ProfileEditView(ui.LayoutView):
         )
 
         # Color Section
+        color_name = get_color_name(embed_color)
         container.add_item(
             ui.Section(
-                ui.TextDisplay(f'## 🎨 Embed Color\n-# Current: {embed_color}'),
+                ui.TextDisplay(f'## 🎨 Embed Color\n-# Current: {color_name}'),
                 accessory=EditColorButton(self.db, self.user_id, self)
             )
         )

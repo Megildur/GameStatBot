@@ -62,7 +62,8 @@ class Commands(commands.Cog):
 			Choice(name='Losses', value='losses'),
 			Choice(name='W/L Ratio', value='wl'),
 			Choice(name='Earnings', value='earnings'),
-			Choice(name='Tournaments Played', value='tournaments_played')
+			Choice(name='Tournaments Played', value='tournaments_played'),
+			Choice(name='Tournaments Won', value='tournaments_won')
 		]
 	)
 	@app_commands.describe(
@@ -77,11 +78,9 @@ class Commands(commands.Cog):
 			stat, 
 			i.guild_id,
 			author_id=i.user.id,
-			timeout=300,
-			per_page=1
+			timeout=300
 		)
 		
-		await paginator.setup_pages()
 		await paginator.start(i)
 
 	@stats.command(
@@ -142,10 +141,11 @@ class Commands(commands.Cog):
 			)
 		
 		if stats:
-			tournaments_played, earnings, kills, deaths, kd, wins, losses, wl = stats
+			tournaments_played, tournaments_won, earnings, kills, deaths, kd, wins, losses, wl = stats
 			
 			stats_text = (
 				f"🏆 **Tournaments:** `{tournaments_played}`\n"
+				f"🥇 **Tournaments Won:** `{tournaments_won}`\n"
 				f"💰 **Earnings:** `${earnings:,}`\n"
 				f"🎯 **K/D Ratio:** `{kd:.2f}`\n"
 				f"🏅 **W/L Ratio:** `{wl:.2f}`"
@@ -197,13 +197,14 @@ class Commands(commands.Cog):
 
 		if isinstance(stats, tuple):
 			tournaments_played = stats[0]
-			earnings = stats[1]
-			kills = stats[2]
-			deaths = stats[3]
-			kd = stats[4]
-			wins = stats[5]
-			losses = stats[6]
-			wl = stats[7]
+			tournaments_won = stats[1]
+			earnings = stats[2]
+			kills = stats[3]
+			deaths = stats[4]
+			kd = stats[5]
+			wins = stats[6]
+			losses = stats[7]
+			wl = stats[8]
 			
 			game_name = self.game_display_names.get(game, game)
 
@@ -211,6 +212,7 @@ class Commands(commands.Cog):
 				name=f"🎮 {game_name}",
 				value=(
 					f"🏆 **Tournaments:** `{tournaments_played}`\n"
+					f"🥇 **Tournaments Won:** `{tournaments_won}`\n"
 					f"💰 **Earnings:** `${earnings:,}`\n"
 					f"⚔️ **Kills:** `{kills:,}`\n"
 					f"💀 **Deaths:** `{deaths:,}`\n"
@@ -227,18 +229,20 @@ class Commands(commands.Cog):
 				game_code = game_stats[0]
 				game_name = self.game_display_names.get(game_code, game_code)
 				tournaments_played = game_stats[1]
-				earnings = game_stats[2]
-				kills = game_stats[3]
-				deaths = game_stats[4]
-				kd = game_stats[5]
-				wins = game_stats[6]
-				losses = game_stats[7]
-				wl = game_stats[8]
+				tournaments_won = game_stats[2]
+				earnings = game_stats[3]
+				kills = game_stats[4]
+				deaths = game_stats[5]
+				kd = game_stats[6]
+				wins = game_stats[7]
+				losses = game_stats[8]
+				wl = game_stats[9]
 
 				embed.add_field(
 					name=f"🎮 {game_name}",
 					value=(
 						f"🏆 **Tournaments:** `{tournaments_played}`\n"
+						f"🥇 **Tournaments Won:** `{tournaments_won}`\n"
 						f"💰 **Earnings:** `${earnings:,}`\n"
 						f"⚔️ **Kills:** `{kills:,}`\n"
 						f"💀 **Deaths:** `{deaths:,}`\n"

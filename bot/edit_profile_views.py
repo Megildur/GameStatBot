@@ -1,4 +1,3 @@
-
 import discord
 from discord import Interaction, ui
 import json
@@ -7,6 +6,19 @@ import pytz
 GAME_OPTIONS = [
     discord.SelectOption(label="Rainbow Six Siege", value="r6s", emoji="🎯"),
     discord.SelectOption(label="Battlefield 6", value="bf6", emoji="💥")
+]
+
+BF6_CLASS_OPTIONS = [
+    discord.SelectOption(label="Assault", value="Assault"),
+    discord.SelectOption(label="Recon", value="Recon"),
+    discord.SelectOption(label="Support", value="Support"),
+    discord.SelectOption(label="Engineer", value="Engineer"),
+]
+
+R6S_ROLE_OPTIONS = [
+    discord.SelectOption(label="Entry", value="entry"),
+    discord.SelectOption(label="Support", value="support"),
+    discord.SelectOption(label="Flex", value="flex"),
 ]
 
 GAME_NAME_MAP = {
@@ -51,7 +63,7 @@ def get_color_name(hex_value: str) -> str:
     """Convert hex color value back to color name"""
     color_map = {
         "0x00d4ff": "Blue",
-        "0x00ff88": "Green", 
+        "0x00ff88": "Green",
         "0xff0000": "Red",
         "0x8a2be2": "Purple",
         "0xff6600": "Orange",
@@ -72,16 +84,16 @@ class ProfileEditView(ui.LayoutView):
         if not profile:
             await self.db.create_user_profile(str(interaction.guild_id), str(self.user_id))
             profile = await self.db.get_user_profile(str(interaction.guild_id), str(self.user_id))
-        
-        gaming_bio, main_game, social_links_str, embed_color, timezone, team_affiliation = profile
+
+        gaming_bio, main_game, social_links_str, embed_color, timezone, team_affiliation, bf6_class, r6s_role, r6s_favorite_operator = profile
         social_links = json.loads(social_links_str) if social_links_str else {}
-        
+
         user = interaction.guild.get_member(self.user_id)
         user_name = user.display_name if user else "Unknown User"
-        
+
         # Clear existing items and rebuild
         self.clear_items()
-        
+
         container = ui.Container(accent_color=0x00d4ff)
         header = ui.TextDisplay(f'# ⚙️ Profile Editor for {user_name}\n-# Customize your gaming profile')
         container.add_item(header)
@@ -104,6 +116,24 @@ class ProfileEditView(ui.LayoutView):
                 accessory=EditGameButton(self.db, self.user_id, self)
             )
         )
+
+        # Game-specific preferences
+        if main_game == "bf6":
+            bf6_class_text = bf6_class if bf6_class else 'Not set'
+            container.add_item(
+                ui.Section(
+                    ui.TextDisplay(f'## 💥 Battlefield 6 Preferences\n-# Favorite Class: {bf6_class_text}'),
+                    accessory=EditBF6PreferencesButton(self.db, self.user_id, self)
+                )
+            )
+        elif main_game == "r6s":
+            r6s_display_text = f"Role: {r6s_role.capitalize() if r6s_role else 'Not set'}, Favorite Operator: {r6s_favorite_operator if r6s_favorite_operator else 'Not set'}"
+            container.add_item(
+                ui.Section(
+                    ui.TextDisplay(f'## 🎯 Rainbow Six Siege Preferences\n-# {r6s_display_text}'),
+                    accessory=EditR6SPreferencesButton(self.db, self.user_id, self)
+                )
+            )
 
         # Social Links Section
         links_text = f'{len(social_links)} links' if social_links else 'No links set'
@@ -155,7 +185,7 @@ class EditBioButton(ui.Button['ProfileEditView']):
     async def callback(self, interaction: Interaction):
         profile = await self.db.get_user_profile(str(interaction.guild_id), str(self.user_id))
         existing_bio = profile[0] if profile else ""
-        
+
         modal = BioModal(self.db, self.user_id, self.parent_view, existing_bio)
         modal.setup_existing_value(existing_bio)
         await interaction.response.send_modal(modal)
@@ -183,7 +213,7 @@ class EditSocialButton(ui.Button['ProfileEditView']):
         existing_links = {}
         if profile and profile[2]:
             existing_links = json.loads(profile[2])
-        
+
         modal = SocialLinksModal(self.db, self.user_id, self.parent_view, existing_links)
         modal.setup_existing_values(existing_links)
         await interaction.response.send_modal(modal)
@@ -221,6 +251,38 @@ class EditColorButton(ui.Button['ProfileEditView']):
         view = ColorSelectView(self.db, self.user_id, self.parent_view)
         await interaction.response.edit_message(view=view)
 
+class EditBF6PreferencesButton(ui.Button['ProfileEditView']):
+    def __init__(self, db, user_id, parent_view):
+        super().__init__(label="Edit BF6 Preferences", style=discord.ButtonStyle.primary, emoji="💥")
+        self.db = db
+        self.user_id = user_id
+        self.parent_view = parent_view
+
+    async def callback(self, interaction: Interaction):
+        profile = await self.db.get_user_profile(str(interaction.guild_id), str(self.user_id))
+        existing_bf6_class = profile[6] if profile else ''
+
+        modal = BF6PreferencesModal(self.db, self.user_id, self.parent_view, existing_bf6_class)
+        modal.setup_existing_value(existing_bf6_class)
+        await interaction.response.send_modal(modal)
+
+class EditR6SPreferencesButton(ui.Button['ProfileEditView']):
+    def __init__(self, db, user_id, parent_view):
+        super().__init__(label="Edit R6S Preferences", style=discord.ButtonStyle.primary, emoji="🎯")
+        self.db = db
+        self.user_id = user_id
+        self.parent_view = parent_view
+
+    async def callback(self, interaction: Interaction):
+        profile = await self.db.get_user_profile(str(interaction.guild_id), str(self.user_id))
+        existing_r6s_role = profile[7] if profile else ''
+        existing_r6s_operator = profile[8] if profile else ''
+
+        modal = R6SPreferencesModal(self.db, self.user_id, self.parent_view, existing_r6s_role, existing_r6s_operator)
+        modal.setup_existing_values()
+        await interaction.response.send_modal(modal)
+
+
 class BioModal(ui.Modal):
     def __init__(self, db, user_id, parent_view, existing_bio=None):
         super().__init__(title="📝 Edit Gaming Bio")
@@ -235,14 +297,14 @@ class BioModal(ui.Modal):
         style=discord.TextStyle.paragraph,
         required=False
     )
-    
+
     def setup_existing_value(self, existing_bio):
         self.bio.default = existing_bio or ''
 
     async def on_submit(self, interaction: Interaction):
         await self.db.update_user_profile(
-            str(interaction.guild_id), 
-            str(self.user_id), 
+            str(interaction.guild_id),
+            str(self.user_id),
             gaming_bio=self.bio.value
         )
         await self.parent_view.refresh_content(interaction)
@@ -254,7 +316,7 @@ class SocialLinksModal(ui.Modal):
         self.db = db
         self.user_id = user_id
         self.parent_view = parent_view
-        
+
         if existing_links is None:
             existing_links = {}
 
@@ -264,35 +326,35 @@ class SocialLinksModal(ui.Modal):
         max_length=200,
         required=False
     )
-    
+
     youtube = ui.TextInput(
         label="YouTube URL",
         placeholder="https://www.youtube.com/@yourchannel",
         max_length=200,
         required=False
     )
-    
+
     twitter = ui.TextInput(
         label="Twitter/X URL",
         placeholder="https://twitter.com/yourusername",
         max_length=200,
         required=False
     )
-    
+
     instagram = ui.TextInput(
         label="Instagram URL",
         placeholder="https://www.instagram.com/yourusername",
         max_length=200,
         required=False
     )
-    
+
     tiktok = ui.TextInput(
         label="TikTok URL",
         placeholder="https://www.tiktok.com/@yourusername",
         max_length=200,
         required=False
     )
-    
+
     def setup_existing_values(self, existing_links):
         self.twitch.default = existing_links.get('twitch', '')
         self.youtube.default = existing_links.get('youtube', '')
@@ -305,32 +367,32 @@ class SocialLinksModal(ui.Modal):
         existing_links = {}
         if profile and profile[2]:
             existing_links = json.loads(profile[2])
-        
+
         if self.twitch.value.strip():
             existing_links['twitch'] = self.twitch.value.strip()
         elif 'twitch' in existing_links and not self.twitch.value.strip():
             del existing_links['twitch']
-            
+
         if self.youtube.value.strip():
             existing_links['youtube'] = self.youtube.value.strip()
         elif 'youtube' in existing_links and not self.youtube.value.strip():
             del existing_links['youtube']
-            
+
         if self.twitter.value.strip():
             existing_links['twitter'] = self.twitter.value.strip()
         elif 'twitter' in existing_links and not self.twitter.value.strip():
             del existing_links['twitter']
-            
+
         if self.instagram.value.strip():
             existing_links['instagram'] = self.instagram.value.strip()
         elif 'instagram' in existing_links and not self.instagram.value.strip():
             del existing_links['instagram']
-            
+
         if self.tiktok.value.strip():
             existing_links['tiktok'] = self.tiktok.value.strip()
         elif 'tiktok' in existing_links and not self.tiktok.value.strip():
             del existing_links['tiktok']
-        
+
         await self.db.update_user_profile(
             str(interaction.guild_id),
             str(self.user_id),
@@ -358,6 +420,77 @@ class TeamModal(ui.Modal):
             str(interaction.guild_id),
             str(self.user_id),
             team_affiliation=self.team.value
+        )
+        await self.parent_view.refresh_content(interaction)
+        await interaction.response.edit_message(view=self.parent_view)
+
+class BF6PreferencesModal(ui.Modal):
+    def __init__(self, db, user_id, parent_view, existing_bf6_class=''):
+        super().__init__(title="💥 Battlefield 6 Preferences")
+        self.db = db
+        self.user_id = user_id
+        self.parent_view = parent_view
+        self.existing_bf6_class = existing_bf6_class
+
+    favorite_class = ui.Select(
+        placeholder="Select your favorite class...",
+        options=BF6_CLASS_OPTIONS,
+        min_values=1,
+        max_values=1
+    )
+
+    def setup_existing_value(self, existing_bf6_class):
+        self.favorite_class.default = existing_bf6_class or ''
+
+    async def on_submit(self, interaction: Interaction):
+        await self.db.update_user_profile(
+            str(interaction.guild_id),
+            str(self.user_id),
+            bf6_class=self.favorite_class.values[0]
+        )
+        await self.parent_view.refresh_content(interaction)
+        await interaction.response.edit_message(view=self.parent_view)
+
+class R6SPreferencesModal(ui.Modal):
+    def __init__(self, db, user_id, parent_view, existing_role='', existing_operator=''):
+        super().__init__(title="🎭 Rainbow Six Siege Preferences")
+        self.db = db
+        self.user_id = user_id
+        self.parent_view = parent_view
+        self.existing_role = existing_role
+        self.existing_operator = existing_operator
+
+    role = ui.TextInput(
+        label="Role (Entry/Support/Flex)",
+        placeholder="Enter your preferred role: Entry, Support, or Flex",
+        max_length=20,
+        required=False
+    )
+
+    favorite_operator = ui.TextInput(
+        label="Favorite Operator",
+        placeholder="Enter your favorite operator (e.g., Ash, Thermite, Vigil)...",
+        max_length=50,
+        required=False
+    )
+
+    def setup_existing_values(self):
+        self.role.default = self.existing_role.capitalize() if self.existing_role else ''
+        self.favorite_operator.default = self.existing_operator
+
+    async def on_submit(self, interaction: Interaction):
+        # Validate role input
+        role_value = self.role.value.lower().strip() if self.role.value else ''
+        valid_roles = ['entry', 'support', 'flex']
+
+        if role_value and role_value not in valid_roles:
+            role_value = self.existing_role  # Keep existing if invalid
+
+        await self.db.update_user_profile(
+            str(interaction.guild_id),
+            str(self.user_id),
+            r6s_role=role_value,
+            r6s_favorite_operator=self.favorite_operator.value
         )
         await self.parent_view.refresh_content(interaction)
         await interaction.response.edit_message(view=self.parent_view)

@@ -50,9 +50,31 @@ class GameStatsDatabase:
                     embed_color TEXT DEFAULT '0x00d4ff',
                     timezone TEXT DEFAULT 'UTC',
                     team_affiliation TEXT DEFAULT '',
+                    bf6_favorite_class TEXT DEFAULT '',
+                    r6s_role TEXT DEFAULT '',
+                    r6s_favorite_operator TEXT DEFAULT '',
                     UNIQUE(server_id, user_id)
                 )
             ''')
+            
+            # Add new columns if they don't exist (for existing databases)
+            try:
+                await db.execute('ALTER TABLE user_profiles ADD COLUMN bf6_favorite_class TEXT DEFAULT ""')
+                await db.commit()
+            except Exception:
+                pass
+            
+            try:
+                await db.execute('ALTER TABLE user_profiles ADD COLUMN r6s_role TEXT DEFAULT ""')
+                await db.commit()
+            except Exception:
+                pass
+            
+            try:
+                await db.execute('ALTER TABLE user_profiles ADD COLUMN r6s_favorite_operator TEXT DEFAULT ""')
+                await db.commit()
+            except Exception:
+                pass
             await db.execute('''
                 CREATE INDEX IF NOT EXISTS idx_profile_lookup 
                 ON user_profiles(server_id, user_id)
@@ -210,22 +232,22 @@ class GameStatsDatabase:
         async with aiosqlite.connect(self.db_file) as db:
             await db.execute('''
                 INSERT OR IGNORE INTO user_profiles 
-                (server_id, user_id, gaming_bio, main_game, social_links, embed_color, timezone, team_affiliation)
-                VALUES (?, ?, '', '', '{}', '0x00d4ff', 'UTC', '')
+                (server_id, user_id, gaming_bio, main_game, social_links, embed_color, timezone, team_affiliation, bf6_favorite_class, r6s_role, r6s_favorite_operator)
+                VALUES (?, ?, '', '', '{}', '0x00d4ff', 'UTC', '', '', '', '')
             ''', (server_id, user_id))
             await db.commit()
 
     async def get_user_profile(self, server_id, user_id):
         async with aiosqlite.connect(self.db_file) as db:
             async with db.execute('''
-                SELECT gaming_bio, main_game, social_links, embed_color, timezone, team_affiliation
+                SELECT gaming_bio, main_game, social_links, embed_color, timezone, team_affiliation, bf6_favorite_class, r6s_role, r6s_favorite_operator
                 FROM user_profiles WHERE server_id = ? AND user_id = ?
             ''', (server_id, user_id)) as cursor:
                 return await cursor.fetchone()
 
     async def update_user_profile(self, server_id, user_id, **profile_data):
         async with aiosqlite.connect(self.db_file) as db:
-            valid_fields = ['gaming_bio', 'main_game', 'social_links', 'embed_color', 'timezone', 'team_affiliation']
+            valid_fields = ['gaming_bio', 'main_game', 'social_links', 'embed_color', 'timezone', 'team_affiliation', 'bf6_favorite_class', 'r6s_role', 'r6s_favorite_operator']
             update_fields = {k: v for k, v in profile_data.items() if k in valid_fields}
             
             if not update_fields:

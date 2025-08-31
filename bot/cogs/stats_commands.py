@@ -92,14 +92,20 @@ class Commands(commands.Cog):
 	)
 	async def profile(self, i: Interaction, user: Optional[discord.Member]) -> None:
 		target_user = user if user else i.user
-		profile = await self.db.get_user_profile(i.guild_id, target_user.id)
+		profile = await self.db.get_user_profile(str(i.guild_id), str(target_user.id))
 		if not profile:
-			await self.db.create_user_profile(i.guild_id, target_user.id)
-			profile = await self.db.get_user_profile(i.guild_id, target_user.id)
+			await self.db.create_user_profile(str(i.guild_id), str(target_user.id))
+			profile = await self.db.get_user_profile(str(i.guild_id), str(target_user.id))
 
-		gaming_bio, main_game, social_links_str, embed_color, timezone, team_affiliation = profile
+		if len(profile) == 6:  # Old format without game preferences
+			gaming_bio, main_game, social_links_str, embed_color, timezone, team_affiliation = profile
+			bf6_favorite_class, r6s_role, r6s_favorite_operator = '', '', ''
+		else:  # New format with game preferences
+			gaming_bio, main_game, social_links_str, embed_color, timezone, team_affiliation, bf6_favorite_class, r6s_role, r6s_favorite_operator = profile
+
 		social_links = json.loads(social_links_str) if social_links_str else {}
-		stats = await self.db.get_stats(i.guild_id, target_user.id, main_game, stat=None) if main_game else None
+
+		game_name = "None selected" if not main_game else self.game_display_names.get(main_game, main_game)
 
 		embed = discord.Embed(
 			title=f"🎮 {target_user.display_name}'s Gaming Profile",
@@ -108,12 +114,19 @@ class Commands(commands.Cog):
 		)
 		embed.set_thumbnail(url=target_user.display_avatar.url)
 
-		game_name = self.game_display_names.get(main_game, "Unknown Game") if main_game else "No game selected"
-
 		profile_info = f"🎯 **Main Game:** `{game_name}`\n"
 		profile_info += f"🌍 **Timezone:** `{timezone}`\n"
 		if team_affiliation:
 			profile_info += f"🏆 **Team:** `{team_affiliation}`\n"
+
+		if main_game == 'bf6' and bf6_favorite_class:
+			profile_info += f"⭐ **Favorite Class:** `{bf6_favorite_class}`\n"
+		elif main_game == 'r6s':
+			if r6s_role:
+				profile_info += f"⭐ **Role:** `{r6s_role}`\n"
+			if r6s_favorite_operator:
+				profile_info += f"⭐ **Favorite Operator:** `{r6s_favorite_operator}`\n"
+
 
 		embed.add_field(
 			name="📊 Profile Information",
@@ -140,7 +153,7 @@ class Commands(commands.Cog):
 				inline=False
 			)
 
-		if stats:
+		if stats := await self.db.get_stats(i.guild_id, target_user.id, main_game, stat=None) if main_game else None:
 			tournaments_played, tournaments_won, earnings, kills, deaths, kd, wins, losses, wl = stats
 
 			stats_text = (
@@ -176,6 +189,14 @@ class Commands(commands.Cog):
 		profile_info += f"🌍 **Timezone:** `{timezone}`\n"
 		if team_affiliation:
 			profile_info += f"🏆 **Team:** `{team_affiliation}`\n"
+		
+		if main_game == 'bf6' and bf6_favorite_class:
+			profile_info += f"⭐ **Favorite Class:** `{bf6_favorite_class}`\n"
+		elif main_game == 'r6s':
+			if r6s_role:
+				profile_info += f"⭐ **Role:** `{r6s_role}`\n"
+			if r6s_favorite_operator:
+				profile_info += f"⭐ **Favorite Operator:** `{r6s_favorite_operator}`\n"
 
 		container.add_item(discord.ui.TextDisplay(profile_info))
 
@@ -198,7 +219,7 @@ class Commands(commands.Cog):
 			container.add_item(discord.ui.TextDisplay(social_text))
 
 		# Game Stats
-		if stats:
+		if stats := await self.db.get_stats(i.guild_id, target_user.id, main_game, stat=None) if main_game else None:
 			tournaments_played, tournaments_won, earnings, kills, deaths, kd, wins, losses, wl = stats
 
 			container.add_item(discord.ui.Separator(spacing=discord.SeparatorSpacing.large))
@@ -238,14 +259,14 @@ class Commands(commands.Cog):
 	async def view(self, i: Interaction, user: Optional[discord.Member], game: Optional[str] = None) -> None:
 		target_user = user if user else i.user
 		stats = await self.db.get_stats(i.guild_id, target_user.id, game, stat=None)
-		
+
 		container = discord.ui.Container(accent_color=0x00d4ff)
-		
+
 		# Header
 		header_text = f"# 📊 Gaming Statistics\n🎯 **Player:** {target_user.mention}"
 		container.add_item(discord.ui.TextDisplay(header_text))
 		container.add_item(discord.ui.Separator(spacing=discord.SeparatorSpacing.large))
-		
+
 		if stats is None or (isinstance(stats, list) and len(stats) == 0):
 			# No stats found
 			container.add_item(discord.ui.TextDisplay("## ❌ No Statistics Found"))
@@ -265,9 +286,9 @@ class Commands(commands.Cog):
 				wl = stats[8]
 
 				game_name = self.game_display_names.get(game, game)
-				
+
 				container.add_item(discord.ui.TextDisplay(f"## 🎮 {game_name}"))
-				
+
 				stats_text = (
 					f"🏆 **Tournaments Played:** `{tournaments_played}`\n"
 					f"🥇 **Tournaments Won:** `{tournaments_won}`\n"
@@ -279,14 +300,14 @@ class Commands(commands.Cog):
 					f"❌ **Losses:** `{losses:,}`\n"
 					f"🏅 **W/L Ratio:** `{wl:.2f}`"
 				)
-				
+
 				container.add_item(discord.ui.TextDisplay(stats_text))
 			else:
 				# Multiple games stats
 				for idx, game_stats in enumerate(stats):
 					if idx > 0:
 						container.add_item(discord.ui.Separator(spacing=discord.SeparatorSpacing.large))
-					
+
 					game_code = game_stats[0]
 					game_name = self.game_display_names.get(game_code, game_code)
 					tournaments_played = game_stats[1]
@@ -300,7 +321,7 @@ class Commands(commands.Cog):
 					wl = game_stats[9]
 
 					container.add_item(discord.ui.TextDisplay(f"## 🎮 {game_name}"))
-					
+
 					stats_text = (
 						f"🏆 **Tournaments Played:** `{tournaments_played}`\n"
 						f"🥇 **Tournaments Won:** `{tournaments_won}`\n"
@@ -312,9 +333,9 @@ class Commands(commands.Cog):
 						f"❌ **Losses:** `{losses:,}`\n"
 						f"🏅 **W/L Ratio:** `{wl:.2f}`"
 					)
-					
+
 					container.add_item(discord.ui.TextDisplay(stats_text))
-		
+
 		# Footer
 		container.add_item(discord.ui.Separator(spacing=discord.SeparatorSpacing.small))
 		container.add_item(discord.ui.TextDisplay("-# 🎮 Live Gaming Stats • Real-time Data"))
@@ -334,9 +355,9 @@ class Commands(commands.Cog):
 		description='Set your profile descriptions'
 	)
 	async def set_profile(self, i: Interaction) -> None:
-		profile = await self.db.get_user_profile(i.guild_id, i.user.id)
+		profile = await self.db.get_user_profile(str(i.guild_id), str(i.user.id))
 		if not profile:
-			await self.db.create_user_profile(i.guild_id, i.user.id)
+			await self.db.create_user_profile(str(i.guild_id), str(i.user.id))
 
 		view = ProfileEditView(self.db, i.user.id)
 		await view.refresh_content(i)
@@ -377,8 +398,8 @@ class Commands(commands.Cog):
 		if game is None:
 			for game in game_list:
 				await self.db.insert_or_update_stat(
-					i.guild_id,
-					user.id,
+					str(i.guild_id),
+					str(user.id),
 					game,
 					tournaments_played=0,
 					tournaments_won=0,
@@ -399,8 +420,8 @@ class Commands(commands.Cog):
 				await i.response.send_message(embed=embed, ephemeral=True)
 		else:
 			await self.db.insert_or_update_stat(
-				i.guild_id,
-				user.id,
+				str(i.guild_id),
+				str(user.id),
 				game,
 				tournaments_played=0,
 				tournaments_won=0,
@@ -442,10 +463,10 @@ class Commands(commands.Cog):
 			await i.response.send_message(embed=embed, ephemeral=True)
 			return
 
-		await self.db.delete_user_profile(i.guild_id, user_id)
+		await self.db.delete_user_profile(str(i.guild_id), str(user_id))
 		for game in game_list:
-			await self.db.delete_stats(i.guild_id, user_id, game)
-		await self.db.delete_player_left(i.guild_id, user_id)
+			await self.db.delete_stats(str(i.guild_id), str(user_id), game)
+		await self.db.delete_player_left(str(i.guild_id), str(user_id))
 
 		embed = discord.Embed(
 			title="🗑️ User Data Deleted",
@@ -459,15 +480,15 @@ class Commands(commands.Cog):
 	async def on_member_join(self, member: discord.Member) -> None:
 		if member.bot:
 			return
-		player = await self.db.get_player_left(member.guild.id, member.id)
+		player = await self.db.get_player_left(str(member.guild.id), str(member.id))
 		if player:
-			await self.db.delete_player_left(member.guild.id, member.id)
+			await self.db.delete_player_left(str(member.guild.id), str(member.id))
 			print(f"Deleted player left record for {member.name} in {member.guild.name}")
 			return
 		for game in game_list:
 			await self.db.insert_or_update_stat(
-				member.guild.id,
-				member.id,
+				str(member.guild.id),
+				str(member.id),
 				game,
 				tournaments_played=0,
 				tournaments_won=0,
@@ -480,14 +501,14 @@ class Commands(commands.Cog):
 				wl=0.0
 			)
 			print(f"Initialized stats for {member.name} in {member.guild.name} for {game}")
-		await self.db.create_user_profile(member.guild.id, member.id)
+		await self.db.create_user_profile(str(member.guild.id), str(member.id))
 		print(f"Initialized profile for {member.name} in {member.guild.name}")
 
 	@commands.Cog.listener()
 	async def on_member_remove(self, member: discord.Member) -> None:
 		if member.bot:
 			return
-		await self.db.player_left(member.guild.id, member.id, member.name, member.display_name)
+		await self.db.player_left(str(member.guild.id), str(member.id), member.name, member.display_name)
 
 async def setup(bot) -> None:
 	await bot.add_cog(Commands(bot))

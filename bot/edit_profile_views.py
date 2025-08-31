@@ -259,12 +259,8 @@ class EditBF6PreferencesButton(ui.Button['ProfileEditView']):
         self.parent_view = parent_view
 
     async def callback(self, interaction: Interaction):
-        profile = await self.db.get_user_profile(str(interaction.guild_id), str(self.user_id))
-        existing_bf6_class = profile[6] if profile else ''
-
-        modal = BF6PreferencesModal(self.db, self.user_id, self.parent_view, existing_bf6_class)
-        modal.setup_existing_value(existing_bf6_class)
-        await interaction.response.send_modal(modal)
+        view = BF6PreferencesView(self.db, self.user_id, self.parent_view)
+        await interaction.response.edit_message(view=view)
 
 class EditR6SPreferencesButton(ui.Button['ProfileEditView']):
     def __init__(self, db, user_id, parent_view):
@@ -424,32 +420,27 @@ class TeamModal(ui.Modal):
         await self.parent_view.refresh_content(interaction)
         await interaction.response.edit_message(view=self.parent_view)
 
-class BF6PreferencesModal(ui.Modal):
-    def __init__(self, db, user_id, parent_view, existing_bf6_class=''):
-        super().__init__(title="💥 Battlefield 6 Preferences")
+class BF6PreferencesView(ui.LayoutView):
+    def __init__(self, db, user_id, parent_view):
+        super().__init__()
         self.db = db
         self.user_id = user_id
         self.parent_view = parent_view
-        self.existing_bf6_class = existing_bf6_class
 
-    favorite_class = ui.Select(
-        placeholder="Select your favorite class...",
-        options=BF6_CLASS_OPTIONS,
-        min_values=1,
-        max_values=1
-    )
+        container = ui.Container(accent_color=0x00d4ff)
+        header = ui.TextDisplay('# 💥 Battlefield 6 Preferences\n-# Choose your favorite class from the dropdown below')
+        container.add_item(header)
+        container.add_item(ui.Separator(spacing=discord.SeparatorSpacing.large))
 
-    def setup_existing_value(self, existing_bf6_class):
-        self.favorite_class.default = existing_bf6_class or ''
+        container.add_item(ui.TextDisplay('## ⚔️ Class Selection\n-# Select your preferred class for Battlefield 6'))
+        container.add_item(BF6ClassSelectDropdown(self.db, self.user_id, self.parent_view))
 
-    async def on_submit(self, interaction: Interaction):
-        await self.db.update_user_profile(
-            str(interaction.guild_id),
-            str(self.user_id),
-            bf6_class=self.favorite_class.values[0]
-        )
-        await self.parent_view.refresh_content(interaction)
-        await interaction.response.edit_message(view=self.parent_view)
+        container.add_item(ui.Separator(spacing=discord.SeparatorSpacing.small))
+        nav_row = ui.ActionRow()
+        nav_row.add_item(BackToProfileButton(self.parent_view))
+        container.add_item(nav_row)
+
+        self.add_item(container)
 
 class R6SPreferencesModal(ui.Modal):
     def __init__(self, db, user_id, parent_view, existing_role='', existing_operator=''):
@@ -623,6 +614,28 @@ class ColorSelectDropdown(ui.ActionRow['ColorSelectView']):
             str(interaction.guild_id),
             str(self.user_id),
             embed_color=select.values[0]
+        )
+        await self.parent_view.refresh_content(interaction)
+        await interaction.response.edit_message(view=self.parent_view)
+
+class BF6ClassSelectDropdown(ui.ActionRow['BF6PreferencesView']):
+    def __init__(self, db, user_id, parent_view):
+        super().__init__()
+        self.db = db
+        self.user_id = user_id
+        self.parent_view = parent_view
+
+    @ui.select(
+        placeholder="Select your favorite class...",
+        options=BF6_CLASS_OPTIONS,
+        min_values=1,
+        max_values=1
+    )
+    async def select_class(self, interaction: Interaction, select: ui.Select):
+        await self.db.update_user_profile(
+            str(interaction.guild_id),
+            str(self.user_id),
+            bf6_favorite_class=select.values[0]
         )
         await self.parent_view.refresh_content(interaction)
         await interaction.response.edit_message(view=self.parent_view)

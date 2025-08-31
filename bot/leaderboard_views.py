@@ -57,7 +57,7 @@ def sort_stats(stats, stat):
 	else:
 		return sorted(stats, key=lambda x: x[1], reverse=True)
 
-class LeaderboardView(discord.ui.View):
+class LeaderboardView(ui.LayoutView):
 	def __init__(self, db, bot, game, stat, guild_id, **kwargs):
 		super().__init__(timeout=kwargs.get('timeout', 300))
 		self.db = db
@@ -119,23 +119,23 @@ class LeaderboardView(discord.ui.View):
 		self.pages = pages
 		self.max_pages = len(self.pages)
 
-	def create_embed(self, page_stats=None):
+	def create_leaderboard_container(self, page_stats=None):
 		game_name = get_game_name(self.game)
 		stat_name = STAT_DISPLAY_MAP.get(self.stat, self.stat)
 
-		embed = discord.Embed(
-			title=f"🏆 Leaderboard: {game_name}",
-			color=0x00d4ff
-		)
+		container = ui.Container(accent_color=0x00d4ff)
+		header = ui.TextDisplay(f'# 🏆 Leaderboard: {game_name}\n-# {stat_name}')
+		container.add_item(header)
+		container.add_item(ui.Separator(spacing=discord.SeparatorSpacing.large))
 
 		if page_stats is None:
-			embed.description = f"**{stat_name}**\n\n❌ No data available for this game/stat combination."
+			container.add_item(ui.TextDisplay(f"## ❌ No Data Available\n-# No data found for {stat_name} in {game_name}"))
 		else:
 			total_players = sum(len(page) for page in self.pages)
 			start_position = self.current_page * self.players_per_page + 1
 			end_position = min(start_position + len(page_stats) - 1, total_players)
 
-			embed.description = f"**{stat_name}**\n\n📈 **Players {start_position}-{end_position} of {total_players}:**"
+			container.add_item(ui.TextDisplay(f"## 📈 Players {start_position}-{end_position} of {total_players}"))
 
 			guild = self.bot.get_guild(self.guild_id)
 			start_position = self.current_page * self.players_per_page + 1
@@ -153,108 +153,74 @@ class LeaderboardView(discord.ui.View):
 				user_display = user.display_name if user else f"User {user_id}"
 				leaderboard_text += f"{medal} **{user_display}** - `{value_display}`\n"
 
-			embed.add_field(name="Rankings", value=leaderboard_text, inline=False)
+			container.add_item(ui.TextDisplay(leaderboard_text))
+
+		container.add_item(ui.Separator(spacing=discord.SeparatorSpacing.large))
+
+		# Navigation section
+		if self.max_pages > 1:
+			nav_section = ui.Section()
+			nav_section.add_item(ui.TextDisplay("## 📄 Navigation"))
+
+			nav_row = ui.ActionRow()
+			if self.current_page > 0:
+				nav_row.add_item(PreviousButton())
+			nav_row.add_item(PageIndicatorButton(self.current_page + 1, self.max_pages))
+			if self.current_page < self.max_pages - 1:
+				nav_row.add_item(NextButton())
+
+			nav_section.add_item(nav_row)
+			container.add_item(nav_section)
+
+		# Game selection section
+		game_section = ui.Section()
+		game_section.add_item(ui.TextDisplay("## 🎮 Game Selection"))
+		game_section.add_item(GameSelectDropdown(self.db, self))
+		container.add_item(game_section)
+
+		# Stats selection section
+		stats_section = ui.Section()
+		stats_section.add_item(ui.TextDisplay("## 📊 Statistics"))
+
+		# Create stat button rows
+		for i in range(0, len(STAT_BUTTONS_CONFIG), 3):
+			stat_row = ui.ActionRow()
+			for j in range(3):
+				if i + j < len(STAT_BUTTONS_CONFIG):
+					stat_name, emoji, label = STAT_BUTTONS_CONFIG[i + j]
+					stat_row.add_item(StatButton(stat_name, emoji, label, self))
+			stats_section.add_item(stat_row)
+
+		container.add_item(stats_section)
 
 		footer_text = "🎮 Leaderboard • Updated in real-time"
 		if self.max_pages > 1:
 			footer_text = f"🎮 Leaderboard • Page {self.current_page + 1}/{self.max_pages} • Updated in real-time"
 
-		embed.set_footer(text=footer_text)
-		return embed
+		container.add_item(ui.Separator(spacing=discord.SeparatorSpacing.small))
+		container.add_item(ui.TextDisplay(f"-# {footer_text}"))
 
-	def update_buttons(self):
-		# Clear all items first
-		self.clear_items()
-
-		# Add navigation buttons if multiple pages
-		if self.max_pages > 1:
-			prev_button = discord.ui.Button(
-				label="◀️ Previous",
-				style=discord.ButtonStyle.secondary,
-				disabled=self.current_page == 0,
-				row=0
-			)
-			prev_button.callback = self._previous_callback
-			self.add_item(prev_button)
-
-			page_button = discord.ui.Button(
-				label=f"Page {self.current_page + 1}/{self.max_pages}",
-				style=discord.ButtonStyle.primary,
-				disabled=True,
-				row=0
-			)
-			self.add_item(page_button)
-
-			next_button = discord.ui.Button(
-				label="Next ▶️",
-				style=discord.ButtonStyle.secondary,
-				disabled=self.current_page == self.max_pages - 1,
-				row=0
-			)
-			next_button.callback = self._next_callback
-			self.add_item(next_button)
-
-		# Add game selector
-		game_select = discord.ui.Select(
-			placeholder="Choose a different game",
-			options=GAME_OPTIONS,
-			min_values=0,
-			max_values=1,
-			row=1
-		)
-		game_select.callback = self._game_select_callback
-		self.add_item(game_select)
-
-		# Add stat buttons in rows
-		for i in range(0, len(STAT_BUTTONS_CONFIG), 3):
-			row_num = 2 + (i // 3)
-			for j in range(3):
-				if i + j < len(STAT_BUTTONS_CONFIG):
-					stat_name, emoji, label = STAT_BUTTONS_CONFIG[i + j]
-					button = discord.ui.Button(
-						label=label,
-						style=discord.ButtonStyle.secondary,
-						emoji=emoji,
-						row=row_num
-					)
-
-					async def make_callback(stat):
-						async def callback(interaction):
-							self.stat = stat
-							await self.update_leaderboard_data(interaction)
-						return callback
-
-					button.callback = make_callback(stat_name)
-					self.add_item(button)
-
-	async def _previous_callback(self, interaction: Interaction):
-		if self.current_page > 0:
-			self.current_page -= 1
-			await self.update_page(interaction)
-
-	async def _next_callback(self, interaction: Interaction):
-		if self.current_page < self.max_pages - 1:
-			self.current_page += 1
-			await self.update_page(interaction)
-
-	async def _game_select_callback(self, interaction: Interaction):
-		if hasattr(interaction.data, 'values') and interaction.data['values']:
-			self.game = interaction.data['values'][0]
-			await self.update_leaderboard_data(interaction)
+		return container
 
 	async def update_page(self, interaction: Interaction):
 		page_stats = self.pages[self.current_page] if self.pages and self.current_page < len(self.pages) else None
-		embed = self.create_embed(page_stats)
-		self.update_buttons()
-		await interaction.response.edit_message(embed=embed, view=self)
+		container = self.create_leaderboard_container(page_stats)
+		
+		self.clear_items()
+		self.add_item(container)
+		
+		await interaction.response.edit_message(view=self)
 
 	async def update_leaderboard_data(self, interaction: Interaction):
 		await self.setup_pages()
 		self.current_page = 0
 		page_stats = self.pages[self.current_page] if self.pages and self.current_page < len(self.pages) else None
-		embed = self.create_embed(page_stats)
-		self.update_buttons()
-		await interaction.response.edit_message(embed=embed, view=self)
+		container = self.create_leaderboard_container(page_stats)
+		
+		self.clear_items()
+		self.add_item(container)
+		
+		await interaction.response.edit_message(view=self)
 
 	async def interaction_check(self, interaction: Interaction) -> bool:
 		if not self.author_id:
@@ -269,9 +235,65 @@ class LeaderboardView(discord.ui.View):
 	async def start(self, interaction: Interaction):
 		await self.setup_pages()
 		page_stats = self.pages[self.current_page] if self.pages and self.current_page < len(self.pages) else None
-		embed = self.create_embed(page_stats)
-		self.update_buttons()
-		await interaction.response.send_message(embed=embed, view=self)
+		container = self.create_leaderboard_container(page_stats)
+		
+		self.clear_items()
+		self.add_item(container)
+		
+		await interaction.response.send_message(view=self)
+
+class PreviousButton(ui.Button):
+	def __init__(self):
+		super().__init__(label="◀️ Previous", style=discord.ButtonStyle.secondary)
+
+	async def callback(self, interaction: Interaction):
+		view = self.view
+		if view.current_page > 0:
+			view.current_page -= 1
+			await view.update_page(interaction)
+
+class NextButton(ui.Button):
+	def __init__(self):
+		super().__init__(label="Next ▶️", style=discord.ButtonStyle.secondary)
+
+	async def callback(self, interaction: Interaction):
+		view = self.view
+		if view.current_page < view.max_pages - 1:
+			view.current_page += 1
+			await view.update_page(interaction)
+
+class PageIndicatorButton(ui.Button):
+	def __init__(self, current, total):
+		super().__init__(label=f"Page {current}/{total}", style=discord.ButtonStyle.primary, disabled=True)
+
+	async def callback(self, interaction: Interaction):
+		await interaction.response.defer()
+
+class StatButton(ui.Button):
+	def __init__(self, stat_name, emoji, label, parent_view):
+		super().__init__(label=label, style=discord.ButtonStyle.secondary, emoji=emoji)
+		self.stat_name = stat_name
+		self.parent_view = parent_view
+
+	async def callback(self, interaction: Interaction):
+		self.parent_view.stat = self.stat_name
+		await self.parent_view.update_leaderboard_data(interaction)
+
+class GameSelectDropdown(ui.ActionRow):
+	def __init__(self, db, parent_view):
+		super().__init__()
+		self.db = db
+		self.parent_view = parent_view
+
+	@ui.select(
+		placeholder="Choose a different game",
+		options=GAME_OPTIONS,
+		min_values=1,
+		max_values=1
+	)
+	async def select_game(self, interaction: Interaction, select: ui.Select):
+		self.parent_view.game = select.values[0]
+		await self.parent_view.update_leaderboard_data(interaction)
 
 # Keep backwards compatibility
 LeaderboardPaginator = LeaderboardView

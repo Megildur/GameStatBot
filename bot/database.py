@@ -25,14 +25,12 @@ class GameStatsDatabase:
                 )
             ''')
             
-            # Add tournaments_won column if it doesn't exist (for existing databases)
             try:
                 await db.execute('''
                     ALTER TABLE game_stats ADD COLUMN tournaments_won INTEGER DEFAULT 0
                 ''')
                 await db.commit()
             except Exception:
-                # Column already exists, ignore the error
                 pass
             await db.execute('''
                 CREATE INDEX IF NOT EXISTS idx_stats_lookup 
@@ -56,8 +54,6 @@ class GameStatsDatabase:
                     UNIQUE(server_id, user_id)
                 )
             ''')
-            
-            # Add new columns if they don't exist (for existing databases)
             try:
                 await db.execute('ALTER TABLE user_profiles ADD COLUMN bf6_favorite_class TEXT DEFAULT ""')
                 await db.commit()

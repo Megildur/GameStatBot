@@ -97,10 +97,10 @@ class Commands(commands.Cog):
 			await self.db.create_user_profile(str(i.guild_id), str(target_user.id))
 			profile = await self.db.get_user_profile(str(i.guild_id), str(target_user.id))
 
-		if len(profile) == 6:  # Old format without game preferences
+		if len(profile) == 6:
 			gaming_bio, main_game, social_links_str, embed_color, timezone, team_affiliation = profile
 			bf6_favorite_class, r6s_role, r6s_favorite_operator = '', '', ''
-		else:  # New format with game preferences
+		else:
 			gaming_bio, main_game, social_links_str, embed_color, timezone, team_affiliation, bf6_favorite_class, r6s_role, r6s_favorite_operator = profile
 
 		social_links = json.loads(social_links_str) if social_links_str else {}
@@ -170,10 +170,8 @@ class Commands(commands.Cog):
 				inline=True
 			)
 
-		# Container implementation for profile
 		container = discord.ui.Container(accent_color=int(embed_color, 16))
 
-		# Header
 		header_text = f"# 🎮 {target_user.display_name}'s Gaming Profile"
 		if gaming_bio:
 			header_text += f"\n📝 **Bio:** {gaming_bio}"
@@ -183,7 +181,6 @@ class Commands(commands.Cog):
 		container.add_item(discord.ui.TextDisplay(header_text))
 		container.add_item(discord.ui.Separator(spacing=discord.SeparatorSpacing.large))
 
-		# Profile Information
 		container.add_item(discord.ui.TextDisplay("## 📊 Profile Information"))
 		profile_info = f"🎯 **Main Game:** `{game_name}`\n"
 		profile_info += f"🌍 **Timezone:** `{timezone}`\n"
@@ -200,7 +197,6 @@ class Commands(commands.Cog):
 
 		container.add_item(discord.ui.TextDisplay(profile_info))
 
-		# Social Links
 		if social_links:
 			container.add_item(discord.ui.Separator(spacing=discord.SeparatorSpacing.large))
 			container.add_item(discord.ui.TextDisplay("## 🔗 Social Links"))
@@ -218,7 +214,6 @@ class Commands(commands.Cog):
 
 			container.add_item(discord.ui.TextDisplay(social_text))
 
-		# Game Stats
 		if stats := await self.db.get_stats(i.guild_id, target_user.id, main_game, stat=None) if main_game else None:
 			tournaments_played, tournaments_won, earnings, kills, deaths, kd, wins, losses, wl = stats
 
@@ -235,7 +230,6 @@ class Commands(commands.Cog):
 
 			container.add_item(discord.ui.TextDisplay(stats_text))
 
-		# Footer
 		container.add_item(discord.ui.Separator(spacing=discord.SeparatorSpacing.small))
 		container.add_item(discord.ui.TextDisplay("-# 🎮 Gaming Profile • Use /stats set profile to edit"))
 
@@ -262,19 +256,16 @@ class Commands(commands.Cog):
 
 		container = discord.ui.Container(accent_color=0x00d4ff)
 
-		# Header
 		header_text = f"# 📊 Gaming Statistics\n🎯 **Player:** {target_user.mention}"
 		container.add_item(discord.ui.TextDisplay(header_text))
 		container.add_item(discord.ui.Separator(spacing=discord.SeparatorSpacing.large))
 
 		if stats is None or (isinstance(stats, list) and len(stats) == 0):
-			# No stats found
 			container.add_item(discord.ui.TextDisplay("## ❌ No Statistics Found"))
 			no_stats_text = f"This player has no gaming statistics recorded yet.\n\n💡 *Start playing tournaments to build your stats!*"
 			container.add_item(discord.ui.TextDisplay(no_stats_text))
 		else:
 			if isinstance(stats, tuple):
-				# Single game stats
 				tournaments_played = stats[0]
 				tournaments_won = stats[1]
 				earnings = stats[2]
@@ -303,7 +294,6 @@ class Commands(commands.Cog):
 
 				container.add_item(discord.ui.TextDisplay(stats_text))
 			else:
-				# Multiple games stats
 				for idx, game_stats in enumerate(stats):
 					if idx > 0:
 						container.add_item(discord.ui.Separator(spacing=discord.SeparatorSpacing.large))
@@ -336,7 +326,6 @@ class Commands(commands.Cog):
 
 					container.add_item(discord.ui.TextDisplay(stats_text))
 
-		# Footer
 		container.add_item(discord.ui.Separator(spacing=discord.SeparatorSpacing.small))
 		container.add_item(discord.ui.TextDisplay("-# 🎮 Live Gaming Stats • Real-time Data"))
 

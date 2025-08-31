@@ -157,7 +157,6 @@ class LeaderboardView(ui.LayoutView):
 
 		container.add_item(ui.Separator(spacing=discord.SeparatorSpacing.large))
 
-		# Navigation section
 		if self.max_pages > 1:
 			nav_row = ui.ActionRow()
 			if self.current_page > 0:
@@ -169,16 +168,13 @@ class LeaderboardView(ui.LayoutView):
 
 		container.add_item(ui.Separator(spacing=discord.SeparatorSpacing.large))
 
-		# Game selection section
 		container.add_item(ui.TextDisplay("## 🎮 Game Selection"))
 		container.add_item(GameSelectDropdown(self.db, self))
 
 		container.add_item(ui.Separator(spacing=discord.SeparatorSpacing.large))
 
-		# Stats selection section  
 		container.add_item(ui.TextDisplay("## 📊 Statistics"))
 
-		# Create stat button rows
 		for i in range(0, len(STAT_BUTTONS_CONFIG), 3):
 			stat_row = ui.ActionRow()
 			for j in range(3):
@@ -293,6 +289,5 @@ class GameSelectDropdown(ui.ActionRow):
 		self.parent_view.game = select
 		await self.parent_view.update_leaderboard_data(interaction)
 
-# Keep backwards compatibility
 LeaderboardPaginator = LeaderboardView
 ContainerPaginator = LeaderboardView

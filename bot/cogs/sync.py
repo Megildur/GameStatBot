@@ -236,18 +236,15 @@ class SyncCog(commands.Cog):
     async def help(self, ctx):
         container = discord.ui.Container(accent_color=0x00ff88)
         
-        # Header
         header = discord.ui.TextDisplay('# 🤖 Bot Help Center\n📋 **Available Slash Commands**\n\n*Use `/` followed by the command name to execute*')
         container.add_item(header)
         container.add_item(discord.ui.Separator(spacing=discord.SeparatorSpacing.large))
         
-        # Collect admin commands
         admin_commands = []
         for command in self.bot.tree.walk_commands(type=discord.AppCommandType.chat_input):
             if command.root_parent is not None and command.root_parent.name == "admin" and not isinstance(command, discord.app_commands.Group):
                 admin_commands.append(f'🔧 `/{command.qualified_name}`\n└ {command.description}')
         
-        # Collect user commands
         user_commands = []
         for command in self.bot.tree.walk_commands(type=discord.AppCommandType.chat_input):
             if command.root_parent is None and not isinstance(command, discord.app_commands.Group):
@@ -255,26 +252,22 @@ class SyncCog(commands.Cog):
             elif command.root_parent is not None and command.root_parent.name != "admin" and not isinstance(command, discord.app_commands.Group):
                 user_commands.append(f'👤 `/{command.qualified_name}`\n└ {command.description}')
         
-        # User Commands Section
         if user_commands:
             container.add_item(discord.ui.TextDisplay('## 🌟 User Commands\n*Available to all users*'))
             user_commands_text = '\n\n'.join(user_commands)
             container.add_item(discord.ui.TextDisplay(user_commands_text))
             container.add_item(discord.ui.Separator(spacing=discord.SeparatorSpacing.large))
         
-        # Admin Commands Section
         if admin_commands:
             container.add_item(discord.ui.TextDisplay('## 🛡️ Admin Commands\n*Restricted to server administrators*'))
             admin_commands_text = '\n\n'.join(admin_commands)
             container.add_item(discord.ui.TextDisplay(admin_commands_text))
             container.add_item(discord.ui.Separator(spacing=discord.SeparatorSpacing.large))
         
-        # No commands found
         if not admin_commands and not user_commands:
             container.add_item(discord.ui.TextDisplay('## ❌ No Commands Found\nNo slash commands are currently available.'))
             container.add_item(discord.ui.Separator(spacing=discord.SeparatorSpacing.large))
         
-        # Footer
         container.add_item(discord.ui.TextDisplay('-# 💡 Tip: Commands are synced automatically • Need more help? Contact an admin'))
         
         view = discord.ui.LayoutView()

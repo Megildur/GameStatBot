@@ -60,7 +60,6 @@ def get_timezone_display(timezone: str) -> str:
         return timezone
 
 def get_color_name(hex_value: str) -> str:
-    """Convert hex color value back to color name"""
     color_map = {
         "0x00d4ff": "Blue",
         "0x00ff88": "Green",
@@ -90,8 +89,6 @@ class ProfileEditView(ui.LayoutView):
 
         user = interaction.guild.get_member(self.user_id)
         user_name = user.display_name if user else "Unknown User"
-
-        # Clear existing items and rebuild
         self.clear_items()
 
         container = ui.Container(accent_color=0x00d4ff)
@@ -99,7 +96,6 @@ class ProfileEditView(ui.LayoutView):
         container.add_item(header)
         container.add_item(ui.Separator(spacing=discord.SeparatorSpacing.large))
 
-        # Gaming Bio Section
         bio_text = gaming_bio if gaming_bio else 'Not set'
         container.add_item(
             ui.Section(
@@ -108,7 +104,6 @@ class ProfileEditView(ui.LayoutView):
             )
         )
 
-        # Main Game Section
         game_text = get_game_name(main_game) if main_game else 'None selected'
         container.add_item(
             ui.Section(
@@ -117,7 +112,6 @@ class ProfileEditView(ui.LayoutView):
             )
         )
 
-        # Game-specific preferences
         if main_game == "bf6":
             bf6_class_text = bf6_class if bf6_class else 'Not set'
             container.add_item(
@@ -135,7 +129,6 @@ class ProfileEditView(ui.LayoutView):
                 )
             )
 
-        # Social Links Section
         links_text = f'{len(social_links)} links' if social_links else 'No links set'
         container.add_item(
             ui.Section(
@@ -146,7 +139,6 @@ class ProfileEditView(ui.LayoutView):
 
         container.add_item(ui.Separator(spacing=discord.SeparatorSpacing.small))
 
-        # Timezone Section
         container.add_item(
             ui.Section(
                 ui.TextDisplay(f'## 🌍 Timezone\n-# Current: {timezone}'),
@@ -154,7 +146,6 @@ class ProfileEditView(ui.LayoutView):
             )
         )
 
-        # Team Section
         team_text = team_affiliation if team_affiliation else 'Not set'
         container.add_item(
             ui.Section(
@@ -163,7 +154,6 @@ class ProfileEditView(ui.LayoutView):
             )
         )
 
-        # Color Section
         color_name = get_color_name(embed_color)
         container.add_item(
             ui.Section(
@@ -173,7 +163,7 @@ class ProfileEditView(ui.LayoutView):
         )
 
         self.add_item(container)
-        return None  # No content string needed for container layout
+        return None
 
 class EditBioButton(ui.Button['ProfileEditView']):
     def __init__(self, db, user_id, parent_view):
@@ -470,12 +460,11 @@ class R6SPreferencesModal(ui.Modal):
         self.favorite_operator.default = self.existing_operator
 
     async def on_submit(self, interaction: Interaction):
-        # Validate role input
         role_value = self.role.value.lower().strip() if self.role.value else ''
         valid_roles = ['entry', 'support', 'flex']
 
         if role_value and role_value not in valid_roles:
-            role_value = self.existing_role  # Keep existing if invalid
+            role_value = self.existing_role
 
         await self.db.update_user_profile(
             str(interaction.guild_id),

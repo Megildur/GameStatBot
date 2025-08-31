@@ -15,19 +15,19 @@ async def user_autocomplete(interaction: Interaction, current: str):
 	try:
 		db = interaction.client.db
 		players_left = await db.get_server_players_left(interaction.guild_id)
-		
+
 		choices = []
 		for user_id, user_name, display_name in players_left:
 			search_text = f"{user_name} {display_name}".lower()
-			
+
 			if current.lower() in search_text:
 				label = f"{display_name} ({user_name})" if user_name != display_name else user_name
 				value = f"{user_id}:{label}"
 				choices.append(app_commands.Choice(name=label[:100], value=value[:100]))
-			
+
 			if len(choices) >= 25:
 				break
-		
+
 		return choices
 	except Exception as e:
 		print(f"Error in user_autocomplete: {e}")
@@ -80,7 +80,7 @@ class Commands(commands.Cog):
 			author_id=i.user.id,
 			timeout=300
 		)
-		
+
 		await paginator.start(i)
 
 	@stats.command(
@@ -96,31 +96,31 @@ class Commands(commands.Cog):
 		if not profile:
 			await self.db.create_user_profile(i.guild_id, target_user.id)
 			profile = await self.db.get_user_profile(i.guild_id, target_user.id)
-		
+
 		gaming_bio, main_game, social_links_str, embed_color, timezone, team_affiliation = profile
 		social_links = json.loads(social_links_str) if social_links_str else {}
 		stats = await self.db.get_stats(i.guild_id, target_user.id, main_game, stat=None)
-		
+
 		embed = discord.Embed(
 			title=f"🎮 {target_user.display_name}'s Gaming Profile",
 			description=f"📝 **Bio:** {gaming_bio}" if gaming_bio else "📝 **Bio:** *No bio set*",
 			color=int(embed_color, 16)
 		)
 		embed.set_thumbnail(url=target_user.display_avatar.url)
-		
+
 		game_name = self.game_display_names.get(main_game, main_game)
-		
+
 		profile_info = f"🎯 **Main Game:** `{game_name}`\n"
 		profile_info += f"🌍 **Timezone:** `{timezone}`\n"
 		if team_affiliation:
 			profile_info += f"🏆 **Team:** `{team_affiliation}`\n"
-		
+
 		embed.add_field(
 			name="📊 Profile Information",
 			value=profile_info,
 			inline=False
 		)
-		
+
 		if social_links:
 			social_text = ""
 			for platform, url in social_links.items():
@@ -133,33 +133,38 @@ class Commands(commands.Cog):
 				}
 				emoji = emoji_map.get(platform, '🔗')
 				social_text += f"{emoji} **{platform.capitalize()}:** [Visit Profile]({url})\n"
-			
+
 			embed.add_field(
 				name="🔗 Social Links",
 				value=social_text,
 				inline=False
 			)
-		
+
 		if stats:
 			tournaments_played, tournaments_won, earnings, kills, deaths, kd, wins, losses, wl = stats
-			
+
 			stats_text = (
-				f"🏆 **Tournaments:** `{tournaments_played}`\n"
+				f"🏆 **Tournaments Played:** `{tournaments_played}`\n"
 				f"🥇 **Tournaments Won:** `{tournaments_won}`\n"
 				f"💰 **Earnings:** `${earnings:,}`\n"
 				f"🎯 **K/D Ratio:** `{kd:.2f}`\n"
 				f"🏅 **W/L Ratio:** `{wl:.2f}`"
 			)
-			
+
 			embed.add_field(
 				name=f"📈 {game_name} Stats",
 				value=stats_text,
 				inline=True
 			)
 		
-		embed.set_footer(text="🎮 Gaming Profile • Use /stats set profile to customize")
-		
-		await i.response.send_message(embed=embed)
+		# Container implementation for profile
+		view = discord.ui.View()
+		container = discord.ui.Activity()
+		container.add_item(ui.Separator(spacing=discord.SeparatorSpacing.small))
+		container.add_item(ui.TextDisplay("-# 🎮 Gaming Profile • Use /stats set profile to edit"))
+
+		view.add_item(container)
+		await i.response.send_message(view=view)
 
 	@stats.command(
 		name='view', 
@@ -205,13 +210,13 @@ class Commands(commands.Cog):
 			wins = stats[6]
 			losses = stats[7]
 			wl = stats[8]
-			
+
 			game_name = self.game_display_names.get(game, game)
 
 			embed.add_field(
 				name=f"🎮 {game_name}",
 				value=(
-					f"🏆 **Tournaments:** `{tournaments_played}`\n"
+					f"🏆 **Tournaments Played:** `{tournaments_played}`\n"
 					f"🥇 **Tournaments Won:** `{tournaments_won}`\n"
 					f"💰 **Earnings:** `${earnings:,}`\n"
 					f"⚔️ **Kills:** `{kills:,}`\n"
@@ -224,7 +229,7 @@ class Commands(commands.Cog):
 				inline=False
 			)
 		else:
-			
+
 			for game_stats in stats:
 				game_code = game_stats[0]
 				game_name = self.game_display_names.get(game_code, game_code)
@@ -241,7 +246,7 @@ class Commands(commands.Cog):
 				embed.add_field(
 					name=f"🎮 {game_name}",
 					value=(
-						f"🏆 **Tournaments:** `{tournaments_played}`\n"
+						f"🏆 **Tournaments Played:** `{tournaments_played}`\n"
 						f"🥇 **Tournaments Won:** `{tournaments_won}`\n"
 						f"💰 **Earnings:** `${earnings:,}`\n"
 						f"⚔️ **Kills:** `{kills:,}`\n"
@@ -253,7 +258,7 @@ class Commands(commands.Cog):
 					),
 					inline=False
 				)
-		
+
 		await i.response.send_message(embed=embed)
 
 	set = app_commands.Group(
@@ -270,10 +275,10 @@ class Commands(commands.Cog):
 		profile = await self.db.get_user_profile(i.guild_id, i.user.id)
 		if not profile:
 			await self.db.create_user_profile(i.guild_id, i.user.id)
-		
+
 		view = ProfileEditView(self.db, i.user.id)
 		await view.refresh_content(i)
-		
+
 		await i.response.send_message(view=view, ephemeral=True)
 
 	admin = app_commands.Group(
@@ -283,7 +288,7 @@ class Commands(commands.Cog):
 			manage_guild=True
 		)
 	)
-	
+
 	@admin.command(
 		name='set_stats', 
 		description='add or remove stats from users'
@@ -374,12 +379,12 @@ class Commands(commands.Cog):
 			)
 			await i.response.send_message(embed=embed, ephemeral=True)
 			return
-		
+
 		await self.db.delete_user_profile(i.guild_id, user_id)
 		for game in game_list:
 			await self.db.delete_stats(i.guild_id, user_id, game)
 		await self.db.delete_player_left(i.guild_id, user_id)
-		
+
 		embed = discord.Embed(
 			title="🗑️ User Data Deleted",
 			description=f"✅ All data for user ID `{user_id}` has been successfully deleted from the database.",

@@ -1,3 +1,4 @@
+
 import discord
 from discord import Interaction
 import discord.ui as ui
@@ -56,7 +57,7 @@ def sort_stats(stats, stat):
 	else:
 		return sorted(stats, key=lambda x: x[1], reverse=True)
 
-class ContainerPaginator(ui.View):
+class ContainerPaginator(ui.LayoutView):
 	def __init__(self, db, bot, game, stat, guild_id, **kwargs):
 		super().__init__(timeout=kwargs.get('timeout', 300))
 		self.db = db
@@ -161,9 +162,9 @@ class ContainerPaginator(ui.View):
 		container.add_item(ui.Separator(spacing=discord.SeparatorSpacing.small))
 
 		# Navigation buttons
-		nav_row = ui.ActionRow()
-
 		if self.max_pages > 1:
+			nav_row = ui.ActionRow()
+
 			prev_button = ui.Button(
 				label="◀️ Previous",
 				style=discord.ButtonStyle.secondary,
@@ -187,7 +188,7 @@ class ContainerPaginator(ui.View):
 			next_button.callback = self._next_callback
 			nav_row.add_item(next_button)
 
-		container.add_item(nav_row)
+			container.add_item(nav_row)
 
 		# Game selector
 		game_select = ui.Select(
@@ -244,11 +245,9 @@ class ContainerPaginator(ui.View):
 			await self.update_page(interaction)
 
 	async def _game_select_callback(self, interaction: Interaction):
-		select = next((item for item in self.children 
-		              if isinstance(item, ui.Select)), None)
-
-		if select and select.values:
-			self.game = select.values[0]
+		# Find the select component and get its values
+		if hasattr(interaction.data, 'values') and interaction.data['values']:
+			self.game = interaction.data['values'][0]
 			await self.update_leaderboard_data(interaction)
 
 	async def update_page(self, interaction: Interaction):

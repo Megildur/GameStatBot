@@ -151,7 +151,7 @@ class LeaderboardView(ui.LayoutView):
 					user = guild.get_member(int(user_id))
 
 				user_display = user.display_name if user else f"User {user_id}"
-				leaderboard_text += f"{medal} **{user_display}** - `{value_display}`\n"
+				leaderboard_text += f"{medal} **{user_display}** - {value_display}\n"
 
 			container.add_item(ui.TextDisplay(leaderboard_text))
 

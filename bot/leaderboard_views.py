@@ -30,11 +30,11 @@ STAT_BUTTONS_CONFIG = [
 
 def format_stat_value(stat, value):
 	if stat == 'earnings':
-		return f"```${value:,}```"
+		return f"**`${value:,}`**"
 	elif stat in ['kd', 'wl']:
-		return f"```{value:.2f}```"
+		return f"**`{value:.2f}`**"
 	else:
-		return f"```{value:,}```"
+		return f"**`{value:,}`**"
 
 def get_medal_emoji(position):
 	if position == 1:

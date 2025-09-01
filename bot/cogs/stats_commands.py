@@ -157,11 +157,11 @@ class Commands(commands.Cog):
 			tournaments_played, tournaments_won, earnings, kills, deaths, kd, wins, losses, wl = stats
 
 			stats_text = (
-				f"🏆 **Tournaments Played:** ```{tournaments_played:,}```\n"
-				f"🥇 **Tournaments Won:** ```{tournaments_won:,}```\n"
-				f"💰 **Earnings:** ```${earnings:,}```\n"
-				f"🎯 **K/D Ratio:** ```{kd:.2f}```\n"
-				f"🏅 **W/L Ratio:** ```{wl:.2f}```"
+				f"🏆 **Tournaments Played:** **`{tournaments_played:,}`**\n"
+				f"🥇 **Tournaments Won:** **`{tournaments_won:,}`**\n"
+				f"💰 **Earnings:** **`${earnings:,}`**\n"
+				f"🎯 **K/D Ratio:** **`{kd:.2f}`**\n"
+				f"🏅 **W/L Ratio:** **`{wl:.2f}`**"
 			)
 
 			embed.add_field(
@@ -221,11 +221,15 @@ class Commands(commands.Cog):
 			container.add_item(discord.ui.TextDisplay(f"## 📈 {game_name} Stats"))
 
 			stats_text = (
-				f"🏆 **Tournaments Played:** ```{tournaments_played:,}```\n"
-				f"🥇 **Tournaments Won:** ```{tournaments_won:,}```\n"
-				f"💰 **Earnings:** ```${earnings:,}```\n"
-				f"🎯 **K/D Ratio:** ```{kd:.2f}```\n"
-				f"🏅 **W/L Ratio:** ```{wl:.2f}```"
+				f"🏆 **Tournaments Played:** **`{tournaments_played:,}`**\n"
+				f"🥇 **Tournaments Won:** **`{tournaments_won:,}`**\n"
+				f"💰 **Earnings:** **`${earnings:,}`**\n"
+				f"⚔️ **Kills:** **`{kills:,}`**\n"
+				f"💀 **Deaths:** **`{deaths:,}`**\n"
+				f"🎯 **K/D Ratio:** **`{kd:.2f}`**\n"
+				f"✅ **Wins:** **`{wins:,}`**\n"
+				f"❌ **Losses:** **`{losses:,}`**\n"
+				f"🏅 **W/L Ratio:** **`{wl:.2f}`**"
 			)
 
 			container.add_item(discord.ui.TextDisplay(stats_text))
@@ -281,15 +285,15 @@ class Commands(commands.Cog):
 				container.add_item(discord.ui.TextDisplay(f"## 🎮 {game_name}"))
 
 				stats_text = (
-					f"🏆 **Tournaments Played:** ```{tournaments_played:,}```\n"
-					f"🥇 **Tournaments Won:** ```{tournaments_won:,}```\n"
-					f"💰 **Earnings:** ```${earnings:,}```\n"
-					f"⚔️ **Kills:** ```{kills:,}```\n"
-					f"💀 **Deaths:** ```{deaths:,}```\n"
-					f"🎯 **K/D Ratio:** ```{kd:.2f}```\n"
-					f"✅ **Wins:** ```{wins:,}```\n"
-					f"❌ **Losses:** ```{losses:,}```\n"
-					f"🏅 **W/L Ratio:** ```{wl:.2f}```"
+					f"🏆 **Tournaments Played:** **`{tournaments_played:,}`**\n"
+					f"🥇 **Tournaments Won:** **`{tournaments_won:,}`**\n"
+					f"💰 **Earnings:** **`${earnings:,}`**\n"
+					f"⚔️ **Kills:** **`{kills:,}`**\n"
+					f"💀 **Deaths:** **`{deaths:,}`**\n"
+					f"🎯 **K/D Ratio:** **`{kd:.2f}`**\n"
+					f"✅ **Wins:** **`{wins:,}`**\n"
+					f"❌ **Losses:** **`{losses:,}`**\n"
+					f"🏅 **W/L Ratio:** **`{wl:.2f}`**"
 				)
 
 				container.add_item(discord.ui.TextDisplay(stats_text))
@@ -313,15 +317,15 @@ class Commands(commands.Cog):
 					container.add_item(discord.ui.TextDisplay(f"## 🎮 {game_name}"))
 
 					stats_text = (
-						f"🏆 **Tournaments Played:** ```{tournaments_played:,}```\n"
-						f"🥇 **Tournaments Won:** ```{tournaments_won:,}```\n"
-						f"💰 **Earnings:** ```${earnings:,}```\n"
-						f"⚔️ **Kills:** ```{kills:,}```\n"
-						f"💀 **Deaths:** ```{deaths:,}```\n"
-						f"🎯 **K/D Ratio:** ```{kd:.2f}```\n"
-						f"✅ **Wins:** ```{wins:,}```\n"
-						f"❌ **Losses:** ```{losses:,}```\n"
-						f"🏅 **W/L Ratio:** ```{wl:.2f}```"
+						f"🏆 **Tournaments Played:** **`{tournaments_played:,}`**\n"
+						f"🥇 **Tournaments Won:** **`{tournaments_won:,}`**\n"
+						f"💰 **Earnings:** **`${earnings:,}`**\n"
+						f"⚔️ **Kills:** **`{kills:,}`**\n"
+						f"💀 **Deaths:** **`{deaths:,}`**\n"
+						f"🎯 **K/D Ratio:** **`{kd:.2f}`**\n"
+						f"✅ **Wins:** **`{wins:,}`**\n"
+						f"❌ **Losses:** **`{losses:,}`**\n"
+						f"🏅 **W/L Ratio:** **`{wl:.2f}`**"
 					)
 
 					container.add_item(discord.ui.TextDisplay(stats_text))

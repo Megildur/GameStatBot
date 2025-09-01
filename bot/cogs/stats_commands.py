@@ -157,8 +157,8 @@ class Commands(commands.Cog):
 			tournaments_played, tournaments_won, earnings, kills, deaths, kd, wins, losses, wl = stats
 
 			stats_text = (
-				f"🏆 **Tournaments Played:** `{tournaments_played}`\n"
-				f"🥇 **Tournaments Won:** `{tournaments_won}`\n"
+				f"🏆 **Tournaments Played:** `{tournaments_played:,}`\n"
+				f"🥇 **Tournaments Won:** `{tournaments_won:,}`\n"
 				f"💰 **Earnings:** `${earnings:,}`\n"
 				f"🎯 **K/D Ratio:** `{kd:.2f}`\n"
 				f"🏅 **W/L Ratio:** `{wl:.2f}`"
@@ -186,7 +186,7 @@ class Commands(commands.Cog):
 		profile_info += f"🌍 **Timezone:** `{timezone}`\n"
 		if team_affiliation:
 			profile_info += f"🏆 **Team:** `{team_affiliation}`\n"
-		
+
 		if main_game == 'bf6' and bf6_favorite_class:
 			profile_info += f"⭐ **Favorite Class:** `{bf6_favorite_class}`\n"
 		elif main_game == 'r6s':
@@ -221,8 +221,8 @@ class Commands(commands.Cog):
 			container.add_item(discord.ui.TextDisplay(f"## 📈 {game_name} Stats"))
 
 			stats_text = (
-				f"🏆 **Tournaments Played:** `{tournaments_played}`\n"
-				f"🥇 **Tournaments Won:** `{tournaments_won}`\n"
+				f"🏆 **Tournaments Played:** `{tournaments_played:,}`\n"
+				f"🥇 **Tournaments Won:** `{tournaments_won:,}`\n"
 				f"💰 **Earnings:** `${earnings:,}`\n"
 				f"🎯 **K/D Ratio:** `{kd:.2f}`\n"
 				f"🏅 **W/L Ratio:** `{wl:.2f}`"
@@ -281,8 +281,8 @@ class Commands(commands.Cog):
 				container.add_item(discord.ui.TextDisplay(f"## 🎮 {game_name}"))
 
 				stats_text = (
-					f"🏆 **Tournaments Played:** `{tournaments_played}`\n"
-					f"🥇 **Tournaments Won:** `{tournaments_won}`\n"
+					f"🏆 **Tournaments Played:** `{tournaments_played:,}`\n"
+					f"🥇 **Tournaments Won:** `{tournaments_won:,}`\n"
 					f"💰 **Earnings:** `${earnings:,}`\n"
 					f"⚔️ **Kills:** `{kills:,}`\n"
 					f"💀 **Deaths:** `{deaths:,}`\n"
@@ -313,8 +313,8 @@ class Commands(commands.Cog):
 					container.add_item(discord.ui.TextDisplay(f"## 🎮 {game_name}"))
 
 					stats_text = (
-						f"🏆 **Tournaments Played:** `{tournaments_played}`\n"
-						f"🥇 **Tournaments Won:** `{tournaments_won}`\n"
+						f"🏆 **Tournaments Played:** `{tournaments_played:,}`\n"
+						f"🥇 **Tournaments Won:** `{tournaments_won:,}`\n"
 						f"💰 **Earnings:** `${earnings:,}`\n"
 						f"⚔️ **Kills:** `{kills:,}`\n"
 						f"💀 **Deaths:** `{deaths:,}`\n"

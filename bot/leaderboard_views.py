@@ -72,44 +72,36 @@ class LeaderboardView(ui.LayoutView):
 		self.players_per_page = 10
 
 	async def setup_pages(self):
-		if self.stat in ['deaths', 'losses']:
-			opposing_stat = 'kills' if self.stat == 'deaths' else 'wins'
-			all_stats = await self.db.get_stats(self.guild_id, game_name=self.game, stat=[self.stat, opposing_stat])
-		else:
-			stats = await self.db.get_stats(self.guild_id, game_name=self.game, stat=self.stat)
-			all_stats = stats
+		all_stats = await self.db.get_stats(self.guild_id, game_name=self.game)
 
 		if not all_stats:
 			self.pages = [None]
 			self.max_pages = 1
 			return
 
+		# Map stat names to their index in the returned data
+		# Data structure: [user_id, tournaments_played, tournaments_won, earnings, kills, deaths, kd, wins, losses, wl]
+		stat_indices = {
+			'tournaments_played': 1,
+			'tournaments_won': 2, 
+			'earnings': 3,
+			'kills': 4,
+			'deaths': 5,
+			'kd': 6,
+			'wins': 7,
+			'losses': 8,
+			'wl': 9
+		}
+
 		processed_stats = []
-		if self.stat in ['deaths', 'losses']:
-			opposing_stat = 'kills' if self.stat == 'deaths' else 'wins'
-			stat_index = 0 if self.stat == 'deaths' else 1
-			opposing_index = 1 if self.stat == 'deaths' else 0
+		stat_index = stat_indices.get(self.stat, 1)
 
-			for row in all_stats:
-				user_id = row[0]
-				main_stat_value = row[2 + stat_index]
-				opposing_stat_value = row[2 + opposing_index]
+		for row in all_stats:
+			user_id = row[0]
+			stat_value = row[stat_index]
+			processed_stats.append((user_id, stat_value))
 
-				if main_stat_value == 0 and opposing_stat_value == 0:
-					sort_key = float('inf')
-				else:
-					sort_key = main_stat_value
-
-				processed_stats.append((user_id, main_stat_value, sort_key))
-
-			sorted_stats = sorted(processed_stats, key=lambda x: (x[2], x[1]))
-			sorted_stats = [(x[0], x[1]) for x in sorted_stats]
-		else:
-			for row in all_stats:
-				user_id = row[0]
-				stat_value = row[2]
-				processed_stats.append((user_id, stat_value))
-			sorted_stats = sort_stats(processed_stats, self.stat)
+		sorted_stats = sort_stats(processed_stats, self.stat)
 
 		pages = []
 		for i in range(0, len(sorted_stats), self.players_per_page):

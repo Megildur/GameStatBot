@@ -117,18 +117,6 @@ class GameStatsDatabase:
 
     async def get_stats(self, server_id, user_id=None, game_name=None, stat=None):
         try:
-            available_stats = {
-                'tournaments_played': 'tournaments_played',
-                'tournaments_won': 'tournaments_won',
-                'earnings': 'earnings', 
-                'kills': 'kills',
-                'deaths': 'deaths',
-                'kd': 'kd',
-                'wins': 'wins',
-                'losses': 'losses',
-                'wl': 'wl'
-            }
-
             # Build query
             query = self.supabase.table('game_stats').select('*').eq('server_id', server_id)
             
@@ -145,7 +133,7 @@ class GameStatsDatabase:
             
             # Process results based on parameters
             if user_id is None:
-                # Return all users data
+                # Return all users data for leaderboard
                 processed_results = []
                 for row in result.data:
                     if game_name is None:
@@ -153,7 +141,9 @@ class GameStatsDatabase:
                     else:
                         processed_row = [row['user_id']]
                     
-                    for stat_name in ['tournaments_played', 'tournaments_won', 'earnings', 'kills', 'deaths', 'kd', 'wins', 'losses', 'wl']:
+                    # Add all stats in the expected order
+                    stat_names = ['tournaments_played', 'tournaments_won', 'earnings', 'kills', 'deaths', 'kd', 'wins', 'losses', 'wl']
+                    for stat_name in stat_names:
                         processed_row.append(row.get(stat_name, 0))
                     
                     processed_results.append(processed_row)
@@ -164,14 +154,16 @@ class GameStatsDatabase:
                     processed_results = []
                     for row in result.data:
                         processed_row = [row['game_name']]
-                        for stat_name in ['tournaments_played', 'tournaments_won', 'earnings', 'kills', 'deaths', 'kd', 'wins', 'losses', 'wl']:
+                        stat_names = ['tournaments_played', 'tournaments_won', 'earnings', 'kills', 'deaths', 'kd', 'wins', 'losses', 'wl']
+                        for stat_name in stat_names:
                             processed_row.append(row.get(stat_name, 0))
                         processed_results.append(processed_row)
                     return processed_results
                 else:
                     # Return specific user and game
                     row = result.data[0]
-                    return [row.get(stat_name, 0) for stat_name in ['tournaments_played', 'tournaments_won', 'earnings', 'kills', 'deaths', 'kd', 'wins', 'losses', 'wl']]
+                    stat_names = ['tournaments_played', 'tournaments_won', 'earnings', 'kills', 'deaths', 'kd', 'wins', 'losses', 'wl']
+                    return [row.get(stat_name, 0) for stat_name in stat_names]
                     
         except Exception as e:
             print(f"Error in get_stats: {e}")

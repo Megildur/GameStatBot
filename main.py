@@ -22,7 +22,7 @@ logging.basicConfig(
 class MyBot(commands.Bot):
     def __init__(self) -> None:
         super().__init__(command_prefix='!', intents=intents)
-        self.db = GameStatsDatabase('data/game_stats.db')
+        self.db = GameStatsDatabase()
         self.presence_data = {
             'r6s': {
                 'game_name': 'Rainbow Six Siege',

@@ -79,8 +79,6 @@ class LeaderboardView(ui.LayoutView):
 			self.max_pages = 1
 			return
 
-		# Map stat names to their index in the returned data
-		# Data structure: [user_id, tournaments_played, tournaments_won, earnings, kills, deaths, kd, wins, losses, wl]
 		stat_indices = {
 			'tournaments_played': 1,
 			'tournaments_won': 2, 

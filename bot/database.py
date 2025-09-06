@@ -14,61 +14,17 @@ class GameStatsDatabase:
         self.supabase: Client = create_client(supabase_url, supabase_key)
 
     async def initialize_db(self):
-        """Initialize Supabase tables (you should create these tables in Supabase dashboard)"""
         print("Database connection established with Supabase")
-        # Note: Tables should be created in Supabase dashboard with the following structure:
-        # 
-        # game_stats table:
-        # - id (bigint, primary key, auto-increment)
-        # - server_id (text)
-        # - user_id (text)
-        # - game_name (text)
-        # - tournaments_played (integer, default 0)
-        # - tournaments_won (integer, default 0)
-        # - earnings (integer, default 0)
-        # - kills (integer, default 0)
-        # - deaths (integer, default 0)
-        # - kd (real, default 0.0)
-        # - wins (integer, default 0)
-        # - losses (integer, default 0)
-        # - wl (real, default 0.0)
-        # - created_at (timestamp with time zone, default now())
-        # - updated_at (timestamp with time zone, default now())
-        # 
-        # user_profiles table:
-        # - id (bigint, primary key, auto-increment)
-        # - server_id (text)
-        # - user_id (text)
-        # - gaming_bio (text, default '')
-        # - main_game (text, default 'r6s')
-        # - social_links (text, default '{}')
-        # - embed_color (text, default '0x00d4ff')
-        # - timezone (text, default 'UTC')
-        # - team_affiliation (text, default '')
-        # - bf6_favorite_class (text, default '')
-        # - r6s_role (text, default '')
-        # - r6s_favorite_operator (text, default '')
-        # - created_at (timestamp with time zone, default now())
-        # - updated_at (timestamp with time zone, default now())
-        # 
-        # player_left table:
-        # - user_id (bigint, primary key)
-        # - server_id (bigint)
-        # - user_name (text)
-        # - display_name (text)
-        # - created_at (timestamp with time zone, default now())
+        
 
     async def insert_or_update_stat(self, server_id, user_id, game_name, **stats):
         try:
-            # Check if record exists
             existing_result = self.supabase.table('game_stats').select('*').eq('server_id', server_id).eq('user_id', user_id).eq('game_name', game_name).execute()
             
             if existing_result.data:
-                # Update existing record
                 existing_stats = existing_result.data[0]
                 updated_stats = {}
                 
-                # Add new stats to existing ones
                 stat_names = ['tournaments_played', 'tournaments_won', 'earnings', 'kills', 'deaths', 'wins', 'losses']
                 for stat_name in stat_names:
                     if stat_name in stats:
@@ -76,7 +32,6 @@ class GameStatsDatabase:
                     else:
                         updated_stats[stat_name] = existing_stats.get(stat_name, 0)
                 
-                # Calculate ratios
                 new_kills = updated_stats['kills']
                 new_deaths = updated_stats['deaths']
                 new_wins = updated_stats['wins']
@@ -85,12 +40,10 @@ class GameStatsDatabase:
                 updated_stats['kd'] = new_kills / new_deaths if new_deaths > 0 else 0.0
                 updated_stats['wl'] = new_wins / new_losses if new_losses > 0 else 0.0
 
-                # Update in Supabase
                 result = self.supabase.table('game_stats').update(updated_stats).eq('server_id', server_id).eq('user_id', user_id).eq('game_name', game_name).execute()
                 
                 return [updated_stats[key] for key in ['tournaments_played', 'tournaments_won', 'earnings', 'kills', 'deaths', 'kd', 'wins', 'losses', 'wl']]
             else:
-                # Insert new record
                 final_stats = {
                     'server_id': server_id,
                     'user_id': user_id,
@@ -117,7 +70,6 @@ class GameStatsDatabase:
 
     async def get_stats(self, server_id, user_id=None, game_name=None, stat=None):
         try:
-            # Build query
             query = self.supabase.table('game_stats').select('*').eq('server_id', server_id)
             
             if user_id is not None:
@@ -130,18 +82,15 @@ class GameStatsDatabase:
             
             if not result.data:
                 return None if user_id and game_name else []
-            
-            # Process results based on parameters
+
             if user_id is None:
-                # Return all users data for leaderboard
                 processed_results = []
                 for row in result.data:
                     if game_name is None:
                         processed_row = [row['user_id'], row['game_name']]
                     else:
                         processed_row = [row['user_id']]
-                    
-                    # Add all stats in the expected order
+
                     stat_names = ['tournaments_played', 'tournaments_won', 'earnings', 'kills', 'deaths', 'kd', 'wins', 'losses', 'wl']
                     for stat_name in stat_names:
                         processed_row.append(row.get(stat_name, 0))
@@ -150,7 +99,6 @@ class GameStatsDatabase:
                 return processed_results
             else:
                 if game_name is None:
-                    # Return all games for specific user
                     processed_results = []
                     for row in result.data:
                         processed_row = [row['game_name']]
@@ -160,7 +108,6 @@ class GameStatsDatabase:
                         processed_results.append(processed_row)
                     return processed_results
                 else:
-                    # Return specific user and game
                     row = result.data[0]
                     stat_names = ['tournaments_played', 'tournaments_won', 'earnings', 'kills', 'deaths', 'kd', 'wins', 'losses', 'wl']
                     return [row.get(stat_name, 0) for stat_name in stat_names]
@@ -178,7 +125,6 @@ class GameStatsDatabase:
 
     async def create_user_profile(self, server_id, user_id):
         try:
-            # Check if profile already exists
             existing_result = self.supabase.table('user_profiles').select('*').eq('server_id', server_id).eq('user_id', user_id).execute()
             
             if not existing_result.data:
@@ -242,7 +188,6 @@ class GameStatsDatabase:
 
     async def player_left(self, server_id, user_id, user_name, display_name):
         try:
-            # Check if record already exists
             existing_result = self.supabase.table('player_left').select('*').eq('server_id', server_id).eq('user_id', user_id).execute()
             
             if not existing_result.data:

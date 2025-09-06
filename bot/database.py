@@ -1,104 +1,83 @@
-import aiosqlite
+
+import os
+from supabase import create_client, Client
+import json
 
 class GameStatsDatabase:
-    def __init__(self, db_file):
-        self.db_file = db_file
+    def __init__(self, db_file=None):
+        # db_file parameter kept for compatibility but not used
+        supabase_url = os.getenv('SUPABASE_URL')
+        supabase_key = os.getenv('SUPABASE_ANON_KEY')
+        
+        if not supabase_url or not supabase_key:
+            raise ValueError("SUPABASE_URL and SUPABASE_ANON_KEY environment variables must be set")
+        
+        self.supabase: Client = create_client(supabase_url, supabase_key)
 
     async def initialize_db(self):
-        async with aiosqlite.connect(self.db_file) as db:
-            await db.execute('''
-                CREATE TABLE IF NOT EXISTS game_stats (
-                    id INTEGER PRIMARY KEY,
-                    server_id TEXT,
-                    user_id TEXT,
-                    game_name TEXT,
-                    tournaments_played INTEGER DEFAULT 0,
-                    tournaments_won INTEGER DEFAULT 0,
-                    earnings INTEGER DEFAULT 0,
-                    kills INTEGER DEFAULT 0,
-                    deaths INTEGER DEFAULT 0,
-                    kd REAL DEFAULT 0.0,
-                    wins INTEGER DEFAULT 0,
-                    losses INTEGER DEFAULT 0,
-                    wl REAL DEFAULT 0.0,
-                    UNIQUE(server_id, user_id, game_name)
-                )
-            ''')
-            
-            try:
-                await db.execute('''
-                    ALTER TABLE game_stats ADD COLUMN tournaments_won INTEGER DEFAULT 0
-                ''')
-                await db.commit()
-            except Exception:
-                pass
-            await db.execute('''
-                CREATE INDEX IF NOT EXISTS idx_stats_lookup 
-                ON game_stats(server_id, user_id, game_name)
-            ''')
-            
-            await db.execute('''
-                CREATE TABLE IF NOT EXISTS user_profiles (
-                    id INTEGER PRIMARY KEY,
-                    server_id TEXT,
-                    user_id TEXT,
-                    gaming_bio TEXT DEFAULT '',
-                    main_game  TEXT DEFAULT 'r6s',
-                    social_links TEXT DEFAULT '{}',
-                    embed_color TEXT DEFAULT '0x00d4ff',
-                    timezone TEXT DEFAULT 'UTC',
-                    team_affiliation TEXT DEFAULT '',
-                    bf6_favorite_class TEXT DEFAULT '',
-                    r6s_role TEXT DEFAULT '',
-                    r6s_favorite_operator TEXT DEFAULT '',
-                    UNIQUE(server_id, user_id)
-                )
-            ''')
-            try:
-                await db.execute('ALTER TABLE user_profiles ADD COLUMN bf6_favorite_class TEXT DEFAULT ""')
-                await db.commit()
-            except Exception:
-                pass
-            
-            try:
-                await db.execute('ALTER TABLE user_profiles ADD COLUMN r6s_role TEXT DEFAULT ""')
-                await db.commit()
-            except Exception:
-                pass
-            
-            try:
-                await db.execute('ALTER TABLE user_profiles ADD COLUMN r6s_favorite_operator TEXT DEFAULT ""')
-                await db.commit()
-            except Exception:
-                pass
-            await db.execute('''
-                CREATE INDEX IF NOT EXISTS idx_profile_lookup 
-                ON user_profiles(server_id, user_id)
-            ''')
-            await db.execute('''
-                CREATE TABLE IF NOT EXISTS player_left (
-                user_id INTEGER PRIMARY KEY,
-                server_id INTEGER,
-                user_name TEXT,
-                display_name TEXT,
-                UNIQUE(server_id, user_id)
-                )
-            ''')
-            await db.commit()
+        """Initialize Supabase tables (you should create these tables in Supabase dashboard)"""
+        print("Database connection established with Supabase")
+        # Note: Tables should be created in Supabase dashboard with the following structure:
+        # 
+        # game_stats table:
+        # - id (bigint, primary key, auto-increment)
+        # - server_id (text)
+        # - user_id (text)
+        # - game_name (text)
+        # - tournaments_played (integer, default 0)
+        # - tournaments_won (integer, default 0)
+        # - earnings (integer, default 0)
+        # - kills (integer, default 0)
+        # - deaths (integer, default 0)
+        # - kd (real, default 0.0)
+        # - wins (integer, default 0)
+        # - losses (integer, default 0)
+        # - wl (real, default 0.0)
+        # - created_at (timestamp with time zone, default now())
+        # - updated_at (timestamp with time zone, default now())
+        # 
+        # user_profiles table:
+        # - id (bigint, primary key, auto-increment)
+        # - server_id (text)
+        # - user_id (text)
+        # - gaming_bio (text, default '')
+        # - main_game (text, default 'r6s')
+        # - social_links (text, default '{}')
+        # - embed_color (text, default '0x00d4ff')
+        # - timezone (text, default 'UTC')
+        # - team_affiliation (text, default '')
+        # - bf6_favorite_class (text, default '')
+        # - r6s_role (text, default '')
+        # - r6s_favorite_operator (text, default '')
+        # - created_at (timestamp with time zone, default now())
+        # - updated_at (timestamp with time zone, default now())
+        # 
+        # player_left table:
+        # - user_id (bigint, primary key)
+        # - server_id (bigint)
+        # - user_name (text)
+        # - display_name (text)
+        # - created_at (timestamp with time zone, default now())
 
     async def insert_or_update_stat(self, server_id, user_id, game_name, **stats):
-        async with aiosqlite.connect(self.db_file) as db:
-            existing_stats = await self.get_stats(server_id, user_id, game_name)
-
-            if existing_stats:
+        try:
+            # Check if record exists
+            existing_result = self.supabase.table('game_stats').select('*').eq('server_id', server_id).eq('user_id', user_id).eq('game_name', game_name).execute()
+            
+            if existing_result.data:
+                # Update existing record
+                existing_stats = existing_result.data[0]
                 updated_stats = {}
-                stat_names = ['tournaments_played', 'tournaments_won', 'earnings', 'kills', 'deaths', 'kd', 'wins', 'losses', 'wl']
-                for i, stat_name in enumerate(stat_names):
-                    if stat_name not in ['kd', 'wl']:
-                        if stat_name in stats:
-                            updated_stats[stat_name] = existing_stats[i] + stats[stat_name]
-                        else:
-                            updated_stats[stat_name] = existing_stats[i]
+                
+                # Add new stats to existing ones
+                stat_names = ['tournaments_played', 'tournaments_won', 'earnings', 'kills', 'deaths', 'wins', 'losses']
+                for stat_name in stat_names:
+                    if stat_name in stats:
+                        updated_stats[stat_name] = existing_stats.get(stat_name, 0) + stats[stat_name]
+                    else:
+                        updated_stats[stat_name] = existing_stats.get(stat_name, 0)
+                
+                # Calculate ratios
                 new_kills = updated_stats['kills']
                 new_deaths = updated_stats['deaths']
                 new_wins = updated_stats['wins']
@@ -107,38 +86,38 @@ class GameStatsDatabase:
                 updated_stats['kd'] = new_kills / new_deaths if new_deaths > 0 else 0.0
                 updated_stats['wl'] = new_wins / new_losses if new_losses > 0 else 0.0
 
-                placeholders = ', '.join([f'{key} = ?' for key in updated_stats.keys()])
-                update_values = list(updated_stats.values())
-                await db.execute(f'''
-                    UPDATE game_stats SET {placeholders}
-                    WHERE server_id = ? AND user_id = ? AND game_name = ?
-                ''', update_values + [server_id, user_id, game_name])
-
-                final_stats = list(updated_stats.values())
+                # Update in Supabase
+                result = self.supabase.table('game_stats').update(updated_stats).eq('server_id', server_id).eq('user_id', user_id).eq('game_name', game_name).execute()
+                
+                return [updated_stats[key] for key in ['tournaments_played', 'tournaments_won', 'earnings', 'kills', 'deaths', 'kd', 'wins', 'losses', 'wl']]
             else:
-                final_stats = {}
-                final_stats['tournaments_played'] = stats.get('tournaments_played', 0)
-                final_stats['tournaments_won'] = stats.get('tournaments_won', 0)
-                final_stats['earnings'] = stats.get('earnings', 0)
-                final_stats['kills'] = stats.get('kills', 0)
-                final_stats['deaths'] = stats.get('deaths', 0)
+                # Insert new record
+                final_stats = {
+                    'server_id': server_id,
+                    'user_id': user_id,
+                    'game_name': game_name,
+                    'tournaments_played': stats.get('tournaments_played', 0),
+                    'tournaments_won': stats.get('tournaments_won', 0),
+                    'earnings': stats.get('earnings', 0),
+                    'kills': stats.get('kills', 0),
+                    'deaths': stats.get('deaths', 0),
+                    'wins': stats.get('wins', 0),
+                    'losses': stats.get('losses', 0)
+                }
+                
                 final_stats['kd'] = final_stats['kills'] / final_stats['deaths'] if final_stats['deaths'] > 0 else 0.0
-                final_stats['wins'] = stats.get('wins', 0)
-                final_stats['losses'] = stats.get('losses', 0)
                 final_stats['wl'] = final_stats['wins'] / final_stats['losses'] if final_stats['losses'] > 0 else 0.0
 
-                await db.execute('''
-                    INSERT INTO game_stats (server_id, user_id, game_name, tournaments_played, tournaments_won, earnings, kills, deaths, kd, wins, losses, wl)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                ''', [server_id, user_id, game_name] + list(final_stats.values()))
-
-                final_stats = list(final_stats.values())
-
-            await db.commit()
-            return final_stats
+                result = self.supabase.table('game_stats').insert(final_stats).execute()
+                
+                return [final_stats[key] for key in ['tournaments_played', 'tournaments_won', 'earnings', 'kills', 'deaths', 'kd', 'wins', 'losses', 'wl']]
+                
+        except Exception as e:
+            print(f"Error in insert_or_update_stat: {e}")
+            raise
 
     async def get_stats(self, server_id, user_id=None, game_name=None, stat=None):
-        async with aiosqlite.connect(self.db_file) as db:
+        try:
             available_stats = {
                 'tournaments_played': 'tournaments_played',
                 'tournaments_won': 'tournaments_won',
@@ -150,148 +129,174 @@ class GameStatsDatabase:
                 'losses': 'losses',
                 'wl': 'wl'
             }
+
+            # Build query
+            query = self.supabase.table('game_stats').select('*').eq('server_id', server_id)
+            
+            if user_id is not None:
+                query = query.eq('user_id', user_id)
+            
+            if game_name is not None:
+                query = query.eq('game_name', game_name)
+            
+            result = query.execute()
+            
+            if not result.data:
+                return None if user_id and game_name else []
+            
+            # Process results based on parameters
             if user_id is None:
-                base_columns = "user_id, game_name, tournaments_played, tournaments_won, earnings, kills, deaths, kd, wins, losses, wl"
-            else:
-                if game_name is None:
-                    base_columns = "game_name, tournaments_played, tournaments_won, earnings, kills, deaths, kd, wins, losses, wl"
-                else:
-                    base_columns = "tournaments_played, tournaments_won, earnings, kills, deaths, kd, wins, losses, wl"
-            if stat is not None:
-                if isinstance(stat, str):
-                    stats_to_select = [stat] if stat in available_stats else []
-                elif isinstance(stat, list):
-                    stats_to_select = [s for s in stat if s in available_stats]
-                else:
-                    stats_to_select = []
-
-                if not stats_to_select:
-                    return None
-
-                if user_id is None:
-                    selected_cols = [available_stats[s] for s in stats_to_select]
-                    base_columns = "user_id, game_name, " + ", ".join(selected_cols)
-                else:
-                    selected_cols = [available_stats[s] for s in stats_to_select]
+                # Return all users data
+                processed_results = []
+                for row in result.data:
                     if game_name is None:
-                         base_columns = "game_name, " + ", ".join(selected_cols)
+                        processed_row = [row['user_id'], row['game_name']]
                     else:
-                         base_columns = ", ".join(selected_cols)
-            if user_id is None:
-                if game_name is None:
-                    query = f'''
-                        SELECT {base_columns}
-                        FROM game_stats
-                        WHERE server_id = ?
-                    '''
-                    params = (server_id,)
-                else:
-                    query = f'''
-                        SELECT {base_columns}
-                        FROM game_stats
-                        WHERE server_id = ? AND game_name = ?
-                    '''
-                    params = (server_id, game_name)
-
-                async with db.execute(query, params) as cursor:
-                    return await cursor.fetchall()
+                        processed_row = [row['user_id']]
+                    
+                    for stat_name in ['tournaments_played', 'tournaments_won', 'earnings', 'kills', 'deaths', 'kd', 'wins', 'losses', 'wl']:
+                        processed_row.append(row.get(stat_name, 0))
+                    
+                    processed_results.append(processed_row)
+                return processed_results
             else:
                 if game_name is None:
-                    query = f'''
-                        SELECT {base_columns}
-                        FROM game_stats
-                        WHERE server_id = ? AND user_id = ?
-                    '''
-                    params = (server_id, user_id)
-
-                    async with db.execute(query, params) as cursor:
-                        return await cursor.fetchall()
+                    # Return all games for specific user
+                    processed_results = []
+                    for row in result.data:
+                        processed_row = [row['game_name']]
+                        for stat_name in ['tournaments_played', 'tournaments_won', 'earnings', 'kills', 'deaths', 'kd', 'wins', 'losses', 'wl']:
+                            processed_row.append(row.get(stat_name, 0))
+                        processed_results.append(processed_row)
+                    return processed_results
                 else:
-                    query = f'''
-                        SELECT {base_columns}
-                        FROM game_stats
-                        WHERE server_id = ? AND user_id = ? AND game_name = ?
-                    '''
-                    params = (server_id, user_id, game_name)
-
-                    async with db.execute(query, params) as cursor:
-                        return await cursor.fetchone()
+                    # Return specific user and game
+                    row = result.data[0]
+                    return [row.get(stat_name, 0) for stat_name in ['tournaments_played', 'tournaments_won', 'earnings', 'kills', 'deaths', 'kd', 'wins', 'losses', 'wl']]
+                    
+        except Exception as e:
+            print(f"Error in get_stats: {e}")
+            return None if user_id and game_name else []
 
     async def delete_stats(self, server_id, user_id, game_name):
-        async with aiosqlite.connect(self.db_file) as db:
-            await db.execute('''
-                DELETE FROM game_stats WHERE server_id = ? AND user_id = ? AND game_name = ?
-            ''', (server_id, user_id, game_name))
-            await db.commit()
+        try:
+            result = self.supabase.table('game_stats').delete().eq('server_id', server_id).eq('user_id', user_id).eq('game_name', game_name).execute()
+        except Exception as e:
+            print(f"Error in delete_stats: {e}")
+            raise
 
     async def create_user_profile(self, server_id, user_id):
-        async with aiosqlite.connect(self.db_file) as db:
-            await db.execute('''
-                INSERT OR IGNORE INTO user_profiles 
-                (server_id, user_id, gaming_bio, main_game, social_links, embed_color, timezone, team_affiliation, bf6_favorite_class, r6s_role, r6s_favorite_operator)
-                VALUES (?, ?, '', '', '{}', '0x00d4ff', 'UTC', '', '', '', '')
-            ''', (server_id, user_id))
-            await db.commit()
+        try:
+            # Check if profile already exists
+            existing_result = self.supabase.table('user_profiles').select('*').eq('server_id', server_id).eq('user_id', user_id).execute()
+            
+            if not existing_result.data:
+                profile_data = {
+                    'server_id': server_id,
+                    'user_id': user_id,
+                    'gaming_bio': '',
+                    'main_game': 'r6s',
+                    'social_links': '{}',
+                    'embed_color': '0x00d4ff',
+                    'timezone': 'UTC',
+                    'team_affiliation': '',
+                    'bf6_favorite_class': '',
+                    'r6s_role': '',
+                    'r6s_favorite_operator': ''
+                }
+                result = self.supabase.table('user_profiles').insert(profile_data).execute()
+        except Exception as e:
+            print(f"Error in create_user_profile: {e}")
+            raise
 
     async def get_user_profile(self, server_id, user_id):
-        async with aiosqlite.connect(self.db_file) as db:
-            async with db.execute('''
-                SELECT gaming_bio, main_game, social_links, embed_color, timezone, team_affiliation, bf6_favorite_class, r6s_role, r6s_favorite_operator
-                FROM user_profiles WHERE server_id = ? AND user_id = ?
-            ''', (server_id, user_id)) as cursor:
-                return await cursor.fetchone()
+        try:
+            result = self.supabase.table('user_profiles').select('gaming_bio, main_game, social_links, embed_color, timezone, team_affiliation, bf6_favorite_class, r6s_role, r6s_favorite_operator').eq('server_id', server_id).eq('user_id', user_id).execute()
+            
+            if result.data:
+                row = result.data[0]
+                return (
+                    row.get('gaming_bio', ''),
+                    row.get('main_game', 'r6s'),
+                    row.get('social_links', '{}'),
+                    row.get('embed_color', '0x00d4ff'),
+                    row.get('timezone', 'UTC'),
+                    row.get('team_affiliation', ''),
+                    row.get('bf6_favorite_class', ''),
+                    row.get('r6s_role', ''),
+                    row.get('r6s_favorite_operator', '')
+                )
+            return None
+        except Exception as e:
+            print(f"Error in get_user_profile: {e}")
+            return None
 
     async def update_user_profile(self, server_id, user_id, **profile_data):
-        async with aiosqlite.connect(self.db_file) as db:
+        try:
             valid_fields = ['gaming_bio', 'main_game', 'social_links', 'embed_color', 'timezone', 'team_affiliation', 'bf6_favorite_class', 'r6s_role', 'r6s_favorite_operator']
             update_fields = {k: v for k, v in profile_data.items() if k in valid_fields}
             
-            if not update_fields:
-                return
-            
-            placeholders = ', '.join([f'{key} = ?' for key in update_fields.keys()])
-            update_values = list(update_fields.values())
-            
-            await db.execute(f'''
-                UPDATE user_profiles SET {placeholders}
-                WHERE server_id = ? AND user_id = ?
-            ''', update_values + [server_id, user_id])
-            await db.commit()
+            if update_fields:
+                result = self.supabase.table('user_profiles').update(update_fields).eq('server_id', server_id).eq('user_id', user_id).execute()
+        except Exception as e:
+            print(f"Error in update_user_profile: {e}")
+            raise
 
     async def delete_user_profile(self, server_id, user_id):
-        async with aiosqlite.connect(self.db_file) as db:
-            await db.execute('''
-                DELETE FROM user_profiles WHERE server_id = ? AND user_id = ?
-            ''', (server_id, user_id))
-            await db.commit()
+        try:
+            result = self.supabase.table('user_profiles').delete().eq('server_id', server_id).eq('user_id', user_id).execute()
+        except Exception as e:
+            print(f"Error in delete_user_profile: {e}")
+            raise
 
     async def player_left(self, server_id, user_id, user_name, display_name):
-        async with aiosqlite.connect(self.db_file) as db:
-            await db.execute('''
-                INSERT OR IGNORE INTO player_left (server_id, user_id, user_name, display_name)
-                VALUES (?, ?, ?, ?)
-            ''', (server_id, user_id, user_name, display_name))
-            await db.commit()
+        try:
+            # Check if record already exists
+            existing_result = self.supabase.table('player_left').select('*').eq('server_id', server_id).eq('user_id', user_id).execute()
+            
+            if not existing_result.data:
+                player_data = {
+                    'server_id': server_id,
+                    'user_id': user_id,
+                    'user_name': user_name,
+                    'display_name': display_name
+                }
+                result = self.supabase.table('player_left').insert(player_data).execute()
+        except Exception as e:
+            print(f"Error in player_left: {e}")
+            raise
 
     async def get_player_left(self, server_id, user_id):
-        async with aiosqlite.connect(self.db_file) as db:
-            async with db.execute('''
-                SELECT user_name, display_name
-                FROM player_left WHERE server_id = ? AND user_id = ?
-            ''', (server_id, user_id)) as cursor:
-                return await cursor.fetchone()
+        try:
+            result = self.supabase.table('player_left').select('user_name, display_name').eq('server_id', server_id).eq('user_id', user_id).execute()
+            
+            if result.data:
+                row = result.data[0]
+                return (row.get('user_name', ''), row.get('display_name', ''))
+            return None
+        except Exception as e:
+            print(f"Error in get_player_left: {e}")
+            return None
 
     async def delete_player_left(self, server_id, user_id):
-        async with aiosqlite.connect(self.db_file) as db:
-            await db.execute('''
-                DELETE FROM player_left WHERE server_id = ? AND user_id = ?
-            ''', (server_id, user_id))
-            await db.commit()
+        try:
+            result = self.supabase.table('player_left').delete().eq('server_id', server_id).eq('user_id', user_id).execute()
+        except Exception as e:
+            print(f"Error in delete_player_left: {e}")
+            raise
 
     async def get_server_players_left(self, server_id):
-        async with aiosqlite.connect(self.db_file) as db:
-            async with db.execute('''
-                SELECT user_id, user_name, display_name
-                FROM player_left WHERE server_id = ?
-            ''', (server_id,)) as cursor:
-                return await cursor.fetchall()
+        try:
+            result = self.supabase.table('player_left').select('user_id, user_name, display_name').eq('server_id', server_id).execute()
+            
+            processed_results = []
+            for row in result.data:
+                processed_results.append((
+                    row.get('user_id', ''),
+                    row.get('user_name', ''),
+                    row.get('display_name', '')
+                ))
+            return processed_results
+        except Exception as e:
+            print(f"Error in get_server_players_left: {e}")
+            return []

@@ -4,7 +4,8 @@ from supabase import create_client, Client
 import json
 
 class GameStatsDatabase:
-    def __init__(self):
+    def __init__(self, db_file=None):
+        # db_file parameter kept for compatibility but not used
         supabase_url = os.getenv('SUPABASE_URL')
         supabase_key = os.getenv('SUPABASE_ANON_KEY')
         

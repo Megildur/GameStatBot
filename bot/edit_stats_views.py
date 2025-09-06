@@ -1,5 +1,5 @@
 import discord
-from discord import Interaction, ui
+from discord import ui, Interaction
 
 GAME_OPTIONS = [
 	discord.SelectOption(label="Rainbow Six Siege", value="r6s", emoji="🎯"),

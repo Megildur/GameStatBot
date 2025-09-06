@@ -269,7 +269,8 @@ class Commands(commands.Cog):
 			no_stats_text = f"This player has no gaming statistics recorded yet.\n\n💡 *Start playing tournaments to build your stats!*"
 			container.add_item(discord.ui.TextDisplay(no_stats_text))
 		else:
-			if isinstance(stats, tuple):
+			# Check if we have stats for a specific user and game (returns a list of stats values)
+			if game is not None and isinstance(stats, list) and len(stats) == 9:
 				tournaments_played = stats[0]
 				tournaments_won = stats[1]
 				earnings = stats[2]

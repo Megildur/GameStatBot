@@ -1,6 +1,6 @@
 
-import os
 from supabase import create_client, Client
+import os
 import json
 
 class GameStatsDatabase:

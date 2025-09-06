@@ -36,7 +36,7 @@ async def user_autocomplete(interaction: Interaction, current: str):
 class Commands(commands.Cog):
 	def __init__(self, bot) -> None:
 		self.bot = bot
-		self.db = bot.db
+		self.db = GameStatsDatabase('data/game_stats.db')
 		self.game_display_names = {'r6s': 'Rainbow Six Siege', 'bf6': 'Battlefield 6'}
 		print(f"Commands loaded")
 
